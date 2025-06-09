@@ -48,6 +48,7 @@ fn main() -> Result<()> {
 
     let result = run(terminal, &mut state);
 
+    // Bring back the normal mode. Otherwise terminal is stuck in raw mode.
     ratatui::try_restore();
     result
 }
@@ -63,6 +64,15 @@ fn run(mut terminal: DefaultTerminal, player_state: &mut PlayerState) -> Result<
                     break;
                 }
                 event::KeyCode::Char(char) => match char {
+                    'p' => {
+                        if let Some(index) = player_state.list_state.selected() {
+                            let being_played = player_state.musics.get_mut(index);
+                            match being_played {
+                                Some(audio) => println!("We got the music playing!"),
+                                None => println!("No music, out of bounds."),
+                            }
+                        }
+                    }
                     'D' => {
                         if let Some(index) = player_state.list_state.selected() {
                             player_state.musics.remove(index);
