@@ -3,8 +3,8 @@ use std::default;
 use color_eyre::eyre::{Ok, Result};
 use crossterm::event::{self, Event};
 use ratatui::Frame;
-use ratatui::style::{Color, Style, Stylize};
-use ratatui::widgets::{Block, BorderType, List, ListItem, ListState};
+use ratatui::style::{Color, Modifier, Style, Stylize};
+use ratatui::widgets::{Block, BorderType, HighlightSpacing, List, ListItem, ListState};
 use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Layout},
@@ -65,12 +65,27 @@ fn run(mut terminal: DefaultTerminal, player_state: &mut PlayerState) -> Result<
                 }
                 event::KeyCode::Char(char) => match char {
                     'p' => {
+                        // Make sure everything is set to not playing
+                        // WHY YOU SAYING ITS DOING NOTHING
+                        //TODO: If you press again it should pause.
+                        player_state
+                            .musics
+                            .iter_mut()
+                            .map(|audio| audio.is_playing = false);
+
+                        // Set the this audio as being played
                         if let Some(index) = player_state.list_state.selected() {
+                            player_state.musics[index].is_playing = true;
+
+                            // We will never go out of bounds. But we could do it this way - bit
+                            // more safe.
+                            /*
                             let being_played = player_state.musics.get_mut(index);
                             match being_played {
-                                Some(audio) => println!("We got the music playing!"),
+                                Some(audio) => audio.is_playing = true,
                                 None => println!("No music, out of bounds."),
                             }
+                            */
                         }
                     }
                     'D' => {
@@ -105,14 +120,24 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
         .border_type(BorderType::Rounded)
         .fg(Color::Yellow)
         .render(border_area, frame.buffer_mut());
-    let list = List::new(
-        player_state
-            .musics
-            .iter()
-            .map(|x| ListItem::from(x.name.clone())),
-    )
-    .highlight_symbol(">")
-    .highlight_style(Style::default().fg(Color::Green));
+
+    let items: Vec<ListItem> = player_state
+        .musics
+        .iter()
+        .map(|item| {
+            let style = match item.is_playing {
+                true => Style::default().fg(Color::Red).add_modifier(Modifier::ITALIC),
+                _ => Style::default(),
+            };
+
+            ListItem::new(item.name.clone()).style(style)
+        })
+        .collect();
+
+    let list = List::new(items)
+        .highlight_symbol(">")
+        .highlight_spacing(HighlightSpacing::Always)
+        .highlight_style(Style::default().fg(Color::Green));
 
     frame.render_stateful_widget(list, inner_area, &mut player_state.list_state);
 
