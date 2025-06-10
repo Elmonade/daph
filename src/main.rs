@@ -19,6 +19,7 @@ struct PlayerState {
     is_searching: bool,
     keyword: String,
     is_playing: bool,
+    current_track_index: usize,
 }
 
 #[derive(Debug, Default)]
@@ -37,6 +38,8 @@ enum Action {
 
 fn main() -> Result<()> {
     let mut state = PlayerState::default();
+    state.is_playing = false;
+    state.current_track_index = 0;
 
     state.musics.push(Audio {
         is_playing: (false),
@@ -116,30 +119,16 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
         event::KeyCode::Esc => return Action::Escape,
         event::KeyCode::Char(char) => match char {
             'p' => {
-                // Make sure everything is set to not playing
-                //TODO: If you press again it should pause.
-                //TODO: Horrible way of doing it.
-
-                player_state.is_playing = !player_state.is_playing;
-
-                player_state
-                    .musics
-                    .iter_mut()
-                    .for_each(|audio| audio.is_playing = false);
-
-                // Set the this audio as being played
                 if let Some(index) = player_state.list_state.selected() {
-                    player_state.musics[index].is_playing = true;
-
-                    // We will never go out of bounds. But we could do it this way - bit
-                    // more safe.
-                    /*
-                    let being_played = player_state.musics.get_mut(index);
-                    match being_played {
-                        Some(audio) => audio.is_playing = true,
-                        None => println!("No music, out of bounds."),
+                    if index == player_state.current_track_index {
+                        player_state.musics[index].is_playing = !player_state.musics[index].is_playing;
+                        player_state.is_playing = !player_state.is_playing;
+                    } else {
+                        player_state.musics[index].is_playing = true;
+                        player_state.musics[player_state.current_track_index].is_playing = false;
+                        player_state.current_track_index = index;
+                        player_state.is_playing = true;
                     }
-                    */
                 }
             }
             '/' => {
@@ -189,13 +178,14 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
     let [music_list_area] = Layout::vertical([Constraint::Fill(1)])
         .margin(1)
         .areas(left_top);
+    let [player_area] = Layout::horizontal([Constraint::Fill(1)])
+        .margin(1)
+        .areas(left_bottom);
 
     let left_top_block = Block::bordered()
         .title("AUDIO")
         .border_type(BorderType::Rounded)
         .fg(Color::Yellow);
-
-    //Block::new().borders(Borders::TOP | Borders::LEFT | Borders::RIGHT).render(left_top, frame.buffer_mut());
 
     let left_bottom_block = Block::bordered()
         .title("PLAYER")
@@ -224,4 +214,10 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
     frame.render_stateful_widget(list, music_list_area, &mut player_state.list_state);
+
+    if player_state.is_playing {
+        Paragraph::new("Current music begin played.").render(player_area, frame.buffer_mut());
+    } else {
+        Paragraph::new("No music is currently playing").render(player_area, frame.buffer_mut());
+    }
 }
