@@ -1,13 +1,12 @@
-use std::default;
-
 use color_eyre::eyre::{Ok, Result};
 use crossterm::event::{self, Event, KeyEvent};
 use ratatui::Frame;
 use ratatui::style::{Color, Modifier, Style, Stylize};
-use ratatui::widgets::{Block, BorderType, HighlightSpacing, List, ListItem, ListState, Padding};
+use ratatui::widgets::{Block, BorderType, Borders, HighlightSpacing, List, ListItem, ListState, Padding};
 use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Layout},
+    symbols,
     widgets::{Paragraph, Widget},
 };
 
@@ -77,8 +76,8 @@ fn run(mut terminal: DefaultTerminal, player_state: &mut PlayerState) -> Result<
             } else {
                 match handle_button(key, player_state) {
                     Action::Escape => break,
-                    Action::Submit=> {},
-                    Action::None => {},
+                    Action::Submit => {}
+                    Action::None => {}
                 }
             }
         }
@@ -107,18 +106,16 @@ fn handle_search(key: KeyEvent, player_state: &mut PlayerState) -> Action {
 
 fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
     match key.code {
-        event::KeyCode::Esc => {
-            return Action::Escape
-        }
+        event::KeyCode::Esc => return Action::Escape,
         event::KeyCode::Char(char) => match char {
             'p' => {
                 // Make sure everything is set to not playing
-                // WHY YOU SAYING ITS DOING NOTHING
                 //TODO: If you press again it should pause.
+                //TODO: Horrible way of doing it.
                 player_state
                     .musics
                     .iter_mut()
-                    .map(|audio| audio.is_playing = false);
+                    .for_each(|audio| audio.is_playing = false);
 
                 // Set the this audio as being played
                 if let Some(index) = player_state.list_state.selected() {
@@ -157,7 +154,17 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
 }
 
 fn render(frame: &mut Frame, player_state: &mut PlayerState) {
+    let [left, right] =
+        Layout::horizontal([Constraint::Percentage(75), Constraint::Percentage(25)])
+            .margin(0)
+            .areas(frame.area());
+    let [left_top, left_bottom] =
+        Layout::vertical([Constraint::Percentage(90), Constraint::Percentage(10)])
+            .margin(0)
+            .areas(left);
+
     if player_state.is_searching {
+        //TODO: Dynamic Scaling OR Make it toggleable
         Paragraph::new(player_state.keyword.as_str())
             .block(
                 Block::bordered()
@@ -165,40 +172,44 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
                     .border_type(BorderType::Rounded)
                     .padding(Padding::uniform(1)),
             )
-            .render(frame.area(), frame.buffer_mut());
-    } else {
-        let [border_area] = Layout::vertical([Constraint::Fill(1)])
-            .margin(1)
-            .areas(frame.area());
-        let [inner_area] = Layout::vertical([Constraint::Fill(1)])
-            .margin(1)
-            .areas(border_area);
-
-        Block::bordered()
-            .border_type(BorderType::Rounded)
-            .fg(Color::Yellow)
-            .render(border_area, frame.buffer_mut());
-
-        let items: Vec<ListItem> = player_state
-            .musics
-            .iter()
-            .map(|item| {
-                let style = match item.is_playing {
-                    true => Style::default()
-                        .fg(Color::Red)
-                        .add_modifier(Modifier::ITALIC),
-                    _ => Style::default(),
-                };
-
-                ListItem::new(item.name.as_str()).style(style)
-            })
-            .collect();
-
-        let list = List::new(items)
-            .highlight_symbol(">")
-            .highlight_spacing(HighlightSpacing::Always)
-            .highlight_style(Style::default().fg(Color::Green));
-
-        frame.render_stateful_widget(list, inner_area, &mut player_state.list_state);
+            .render(right, frame.buffer_mut());
     }
+
+    let [inner_area] = Layout::vertical([Constraint::Fill(1)])
+        .margin(1)
+        .areas(left_top);
+
+    let left_top_block = Block::bordered()
+        .border_type(BorderType::Rounded)
+        .fg(Color::Yellow);
+
+    //Block::new().borders(Borders::TOP | Borders::LEFT | Borders::RIGHT).render(left_top, frame.buffer_mut());
+
+    let left_bottom_block = Block::bordered()
+        .border_type(BorderType::Rounded)
+        .fg(Color::Yellow);
+
+    let items: Vec<ListItem> = player_state
+        .musics
+        .iter()
+        .map(|item| {
+            let style = match item.is_playing {
+                true => Style::default()
+                    .fg(Color::Red)
+                    .add_modifier(Modifier::ITALIC),
+                _ => Style::default(),
+            };
+
+            ListItem::new(item.name.as_str()).style(style)
+        })
+        .collect();
+
+    let list = List::new(items)
+        .highlight_symbol(">")
+        .highlight_spacing(HighlightSpacing::Always)
+        .highlight_style(Style::default().fg(Color::Green));
+
+    frame.render_stateful_widget(list, inner_area, &mut player_state.list_state);
+    frame.render_widget(left_top_block, left_top);
+    frame.render_widget(left_bottom_block, left_bottom);
 }
