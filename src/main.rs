@@ -20,6 +20,7 @@ struct PlayerState {
     keyword: String,
     is_playing: bool,
     current_track_index: usize,
+    current_track: Audio,
 }
 
 #[derive(Debug, Default)]
@@ -175,6 +176,7 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
             .render(right, frame.buffer_mut());
     }
 
+    //TODO: Implement Table inside music_list_area
     let [music_list_area] = Layout::vertical([Constraint::Fill(1)])
         .margin(1)
         .areas(left_top);
