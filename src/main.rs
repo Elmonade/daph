@@ -209,7 +209,7 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
             let style = match item.is_playing {
                 true => Style::default()
                     .fg(Color::Blue)
-                    .add_modifier(Modifier::ITALIC),
+                    .add_modifier(Modifier::BOLD),
                 _ => Style::default(),
             };
 
