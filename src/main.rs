@@ -2,7 +2,9 @@ use color_eyre::eyre::{Ok, Result};
 use crossterm::event::{self, Event, KeyEvent};
 use ratatui::Frame;
 use ratatui::style::{Color, Modifier, Style, Stylize};
-use ratatui::widgets::{Block, BorderType, Borders, HighlightSpacing, List, ListItem, ListState, Padding};
+use ratatui::widgets::{
+    Block, BorderType, Borders, HighlightSpacing, List, ListItem, ListState, Padding,
+};
 use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Layout},
@@ -16,6 +18,7 @@ struct PlayerState {
     list_state: ListState,
     is_searching: bool,
     keyword: String,
+    is_playing: bool,
 }
 
 #[derive(Debug, Default)]
@@ -23,6 +26,7 @@ struct Audio {
     is_playing: bool,
     name: String,
     author: String,
+    length: u16,
 }
 
 enum Action {
@@ -38,16 +42,19 @@ fn main() -> Result<()> {
         is_playing: (false),
         name: (String::from("Hello from the other side")),
         author: (String::from("Adele")),
+        length: 180,
     });
     state.musics.push(Audio {
         is_playing: (false),
         name: (String::from("Hail to the king")),
         author: (String::from("Adele")),
+        length: 180,
     });
     state.musics.push(Audio {
         is_playing: (false),
         name: (String::from("Lemon Tree")),
         author: (String::from("Adele")),
+        length: 180,
     });
 
     color_eyre::install()?;
@@ -112,6 +119,9 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
                 // Make sure everything is set to not playing
                 //TODO: If you press again it should pause.
                 //TODO: Horrible way of doing it.
+
+                player_state.is_playing = !player_state.is_playing;
+
                 player_state
                     .musics
                     .iter_mut()
@@ -170,22 +180,25 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
                 Block::bordered()
                     .fg(Color::Green)
                     .border_type(BorderType::Rounded)
-                    .padding(Padding::uniform(1)),
+                    .padding(Padding::uniform(1))
+                    .title("SEARCH"),
             )
             .render(right, frame.buffer_mut());
     }
 
-    let [inner_area] = Layout::vertical([Constraint::Fill(1)])
+    let [music_list_area] = Layout::vertical([Constraint::Fill(1)])
         .margin(1)
         .areas(left_top);
 
     let left_top_block = Block::bordered()
+        .title("AUDIO")
         .border_type(BorderType::Rounded)
         .fg(Color::Yellow);
 
     //Block::new().borders(Borders::TOP | Borders::LEFT | Borders::RIGHT).render(left_top, frame.buffer_mut());
 
     let left_bottom_block = Block::bordered()
+        .title("PLAYER")
         .border_type(BorderType::Rounded)
         .fg(Color::Yellow);
 
@@ -195,7 +208,7 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
         .map(|item| {
             let style = match item.is_playing {
                 true => Style::default()
-                    .fg(Color::Red)
+                    .fg(Color::Blue)
                     .add_modifier(Modifier::ITALIC),
                 _ => Style::default(),
             };
@@ -205,11 +218,10 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
         .collect();
 
     let list = List::new(items)
-        .highlight_symbol(">")
-        .highlight_spacing(HighlightSpacing::Always)
-        .highlight_style(Style::default().fg(Color::Green));
+        .highlight_symbol("-")
+        .highlight_spacing(HighlightSpacing::Always);
 
-    frame.render_stateful_widget(list, inner_area, &mut player_state.list_state);
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
+    frame.render_stateful_widget(list, music_list_area, &mut player_state.list_state);
 }
