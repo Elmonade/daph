@@ -42,33 +42,36 @@ fn main() -> Result<()> {
     state.is_playing = false;
     state.current_track_index = 0;
 
-    state.musics.push(Audio {
+    load_audio(&mut state);
+
+    color_eyre::install()?;
+    let terminal = ratatui::init();
+    let result = run(terminal, &mut state);
+
+    ratatui::try_restore(); // Exit raw mode
+    result
+}
+
+fn load_audio(player_state: &mut PlayerState) {
+    //TODO: Initialize audio files from the given path.
+    player_state.musics.push(Audio {
         is_playing: (false),
         name: (String::from("Hello from the other side")),
         author: (String::from("Adele")),
         length: 180,
     });
-    state.musics.push(Audio {
+    player_state.musics.push(Audio {
         is_playing: (false),
         name: (String::from("Hail to the king")),
         author: (String::from("Adele")),
         length: 180,
     });
-    state.musics.push(Audio {
+    player_state.musics.push(Audio {
         is_playing: (false),
         name: (String::from("Lemon Tree")),
         author: (String::from("Adele")),
         length: 180,
     });
-
-    color_eyre::install()?;
-    let terminal = ratatui::init();
-
-    let result = run(terminal, &mut state);
-
-    // Bring back the normal mode. Otherwise terminal is stuck in raw mode.
-    ratatui::try_restore();
-    result
 }
 
 fn run(mut terminal: DefaultTerminal, player_state: &mut PlayerState) -> Result<()> {
