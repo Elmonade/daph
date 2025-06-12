@@ -1,5 +1,6 @@
 use color_eyre::eyre::{Ok, Result};
 use crossterm::event::{self, Event, KeyEvent};
+use lofty::tag::Accessor;
 use ratatui::Frame;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::widgets::{
@@ -11,6 +12,9 @@ use ratatui::{
     symbols,
     widgets::{Paragraph, Widget},
 };
+
+use lofty::file::{TaggedFile, TaggedFileExt};
+use lofty::read_from_path;
 
 #[derive(Debug, Default)]
 struct PlayerState {
@@ -52,8 +56,30 @@ fn main() -> Result<()> {
     result
 }
 
-fn load_audio(player_state: &mut PlayerState) {
+fn load_audio(player_state: &mut PlayerState) -> Result<TaggedFile>{
     //TODO: Initialize audio files from the given path.
+
+    let path = "~/Media/audio/Enji - Ulaan/Enji - Ulaan - 02 Taivshral.mp3";
+    let tagged_file = read_from_path(path)?;
+
+    // Get the primary tag (ID3v2 in this case)
+    let id3v2 = tagged_file.primary_tag();
+
+    // If the primary tag doesn't exist, or the tag types
+    // don't matter, the first tag can be retrieved
+    let unknown_first_tag = tagged_file.first_tag();
+    match id3v2 {
+        Some(tag) => {
+            if let Some(title) = tag.title() {
+                println!("{}", title);
+            }
+        }
+        None => println!("No tag found."),
+    }
+
+    //println!("{}", unknown_first_tag.unwrap());
+    //println!("{}", id3v2.title);
+
     player_state.musics.push(Audio {
         is_playing: (false),
         name: (String::from("Hello from the other side")),
@@ -72,6 +98,7 @@ fn load_audio(player_state: &mut PlayerState) {
         author: (String::from("Adele")),
         length: 180,
     });
+    Ok(tagged_file)
 }
 
 fn run(mut terminal: DefaultTerminal, player_state: &mut PlayerState) -> Result<()> {
@@ -125,7 +152,8 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
             'p' => {
                 if let Some(index) = player_state.list_state.selected() {
                     if index == player_state.current_track_index {
-                        player_state.musics[index].is_playing = !player_state.musics[index].is_playing;
+                        player_state.musics[index].is_playing =
+                            !player_state.musics[index].is_playing;
                         player_state.is_playing = !player_state.is_playing;
                     } else {
                         player_state.musics[index].is_playing = true;
