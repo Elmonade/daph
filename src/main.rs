@@ -1,4 +1,4 @@
-use color_eyre::eyre::{Ok, Result};
+use color_eyre::eyre::Result;
 use crossterm::event::{self, Event, KeyEvent};
 use lofty::tag::Accessor;
 use ratatui::Frame;
@@ -15,6 +15,8 @@ use ratatui::{
 
 use lofty::file::{TaggedFile, TaggedFileExt};
 use lofty::read_from_path;
+use std::result::Result::Ok;
+use log::{info, trace, warn};
 
 #[derive(Debug, Default)]
 struct PlayerState {
@@ -42,32 +44,37 @@ enum Action {
 }
 
 fn main() -> Result<()> {
+    env_logger::init();
     let mut state = PlayerState::default();
     state.is_playing = false;
     state.current_track_index = 0;
 
-    load_audio(&mut state);
+    if !load_audio(&mut state) {
+        println!("No audio file loaded.");
+    }
 
     color_eyre::install()?;
     let terminal = ratatui::init();
     let result = run(terminal, &mut state);
 
-    ratatui::try_restore(); // Exit raw mode
+    let _ = ratatui::try_restore(); // Exit raw mode
     result
 }
 
-fn load_audio(player_state: &mut PlayerState) -> Result<TaggedFile>{
+fn load_audio(player_state: &mut PlayerState) -> bool {
     //TODO: Initialize audio files from the given path.
 
-    let path = "~/Media/audio/Enji - Ulaan/Enji - Ulaan - 02 Taivshral.mp3";
-    let tagged_file = read_from_path(path)?;
+    let path = "/home/jello/Media/audio/Enji - Ulaan/Enji - Ulaan - 02 Taivshral.mp3";
+    let tagged_file = match read_from_path(path) {
+        Ok(it) => it,
+        _err => return false, // Make it return actual error
+    };
 
+    println!("{}", tagged_file.tags().len());
+    info!("{}", tagged_file.tags().len());
+    assert!(tagged_file.tags().len() > 1);
     // Get the primary tag (ID3v2 in this case)
     let id3v2 = tagged_file.primary_tag();
-
-    // If the primary tag doesn't exist, or the tag types
-    // don't matter, the first tag can be retrieved
-    let unknown_first_tag = tagged_file.first_tag();
     match id3v2 {
         Some(tag) => {
             if let Some(title) = tag.title() {
@@ -98,7 +105,7 @@ fn load_audio(player_state: &mut PlayerState) -> Result<TaggedFile>{
         author: (String::from("Adele")),
         length: 180,
     });
-    Ok(tagged_file)
+    true
 }
 
 fn run(mut terminal: DefaultTerminal, player_state: &mut PlayerState) -> Result<()> {
