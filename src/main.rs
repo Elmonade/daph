@@ -1,6 +1,6 @@
 use color_eyre::eyre::Result;
 use crossterm::event::{self, Event, KeyEvent};
-use lofty::tag::Accessor;
+use lofty::tag::{Accessor, Tag, TagExt};
 use ratatui::Frame;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::widgets::{
@@ -13,10 +13,10 @@ use ratatui::{
     widgets::{Paragraph, Widget},
 };
 
-use lofty::file::{TaggedFile, TaggedFileExt};
+use lofty::file::{AudioFile, TaggedFile, TaggedFileExt};
 use lofty::read_from_path;
-use std::result::Result::Ok;
 use log::{info, trace, warn};
+use std::result::Result::Ok;
 
 #[derive(Debug, Default)]
 struct PlayerState {
@@ -34,7 +34,7 @@ struct Audio {
     is_playing: bool,
     name: String,
     author: String,
-    length: u16,
+    length: u64,
 }
 
 enum Action {
@@ -62,7 +62,7 @@ fn main() -> Result<()> {
 }
 
 fn load_audio(player_state: &mut PlayerState) -> bool {
-    //TODO: Initialize audio files from the given path.
+    //TODO: Initialize audio file metadata from the given path.
 
     let path = "/home/jello/Media/audio/Enji - Ulaan/Enji - Ulaan - 02 Taivshral.mp3";
     let tagged_file = match read_from_path(path) {
@@ -70,22 +70,37 @@ fn load_audio(player_state: &mut PlayerState) -> bool {
         _err => return false, // Make it return actual error
     };
 
-    println!("{}", tagged_file.tags().len());
-    info!("{}", tagged_file.tags().len());
-    assert!(tagged_file.tags().len() > 1);
-    // Get the primary tag (ID3v2 in this case)
-    let id3v2 = tagged_file.primary_tag();
-    match id3v2 {
-        Some(tag) => {
-            if let Some(title) = tag.title() {
-                println!("{}", title);
-            }
-        }
-        None => println!("No tag found."),
+    let tag = match tagged_file.primary_tag() {
+        Some(primary_tag) => primary_tag,
+        None => tagged_file.first_tag().expect("ERROR: No tags"),
+    };
+
+    let tag_title = tag.title();
+    let title = String::from(tag_title.as_deref().unwrap_or("None"));
+    let tag_artist = tag.artist();
+    let artist = String::from(tag_artist.as_deref().unwrap_or("None"));
+
+    if let Some(title) = tag.title() {
+        println!("{}", title);
     }
+    if let Some(artist) = tag.artist() {
+        println!("{}", artist);
+    }
+
+    let properties = tagged_file.properties();
+    let seconds = properties.duration().as_secs();
+    println!("{}", seconds);
+
 
     //println!("{}", unknown_first_tag.unwrap());
     //println!("{}", id3v2.title);
+
+    player_state.musics.push(Audio {
+        is_playing: (false),
+        name: (title),
+        author: (artist),
+        length: seconds,
+    });
 
     player_state.musics.push(Audio {
         is_playing: (false),
