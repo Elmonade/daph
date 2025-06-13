@@ -21,6 +21,8 @@ use std::fs;
 use std::result::Result::Ok;
 use walkdir::WalkDir;
 
+const PATH: &str = "/home/jello/Media/audio";
+
 #[derive(Debug, Default)]
 struct PlayerState {
     musics: Vec<Audio>,
@@ -62,10 +64,9 @@ fn main() -> Result<()> {
     result
 }
 
+//TODO: Pushing everything to PlayerState struct is kinda iffy.
 fn load_audio(player_state: &mut PlayerState) -> Result<bool, Error> {
-    //TODO: Initialize audio file metadata from the given path.
-
-    for entry in WalkDir::new("/home/jello/Media/audio/") {
+    for entry in WalkDir::new(PATH) {
         let entry = entry?;
         if let Some(extension) = entry.path().extension() {
             if extension == "mp3" || extension == "flac" || extension == "wav" {
@@ -95,9 +96,6 @@ fn load_audio(player_state: &mut PlayerState) -> Result<bool, Error> {
                 let properties = tagged_file.properties();
                 let seconds = properties.duration().as_secs();
                 println!("{}", seconds);
-
-                //println!("{}", unknown_first_tag.unwrap());
-                //println!("{}", id3v2.title);
 
                 player_state.musics.push(Audio {
                     is_playing: (false),
@@ -246,7 +244,8 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
                 _ => Style::default(),
             };
 
-            ListItem::new(item.name.as_str()).style(style)
+            let list_entry = format!("{} | {} | {}", item.name, item.author, item.length);
+            ListItem::new(list_entry).style(style)
         })
         .collect();
 
