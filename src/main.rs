@@ -1,4 +1,5 @@
-use color_eyre::eyre::Result;
+use color_eyre::config::PanicReport;
+use color_eyre::eyre::{Error, Result};
 use crossterm::event::{self, Event, KeyEvent};
 use lofty::tag::{Accessor, Tag, TagExt};
 use ratatui::Frame;
@@ -16,7 +17,9 @@ use ratatui::{
 use lofty::file::{AudioFile, TaggedFile, TaggedFileExt};
 use lofty::read_from_path;
 use log::{info, trace, warn};
+use std::fs;
 use std::result::Result::Ok;
+use walkdir::WalkDir;
 
 #[derive(Debug, Default)]
 struct PlayerState {
@@ -49,9 +52,7 @@ fn main() -> Result<()> {
     state.is_playing = false;
     state.current_track_index = 0;
 
-    if !load_audio(&mut state) {
-        println!("No audio file loaded.");
-    }
+    let _ = load_audio(&mut state);
 
     color_eyre::install()?;
     let terminal = ratatui::init();
@@ -61,66 +62,53 @@ fn main() -> Result<()> {
     result
 }
 
-fn load_audio(player_state: &mut PlayerState) -> bool {
+fn load_audio(player_state: &mut PlayerState) -> Result<bool, Error> {
     //TODO: Initialize audio file metadata from the given path.
 
-    let path = "/home/jello/Media/audio/Enji - Ulaan/Enji - Ulaan - 02 Taivshral.mp3";
-    let tagged_file = match read_from_path(path) {
-        Ok(it) => it,
-        _err => return false, // Make it return actual error
-    };
+    for entry in WalkDir::new("/home/jello/Media/audio/") {
+        let entry = entry?;
+        if let Some(extension) = entry.path().extension() {
+            if extension == "mp3" || extension == "flac" || extension == "wav" {
+                let path = entry.path();
+                let tagged_file = match read_from_path(path) {
+                    Ok(it) => it,
+                    Err(_) => todo!(),
+                };
 
-    let tag = match tagged_file.primary_tag() {
-        Some(primary_tag) => primary_tag,
-        None => tagged_file.first_tag().expect("ERROR: No tags"),
-    };
+                let tag = match tagged_file.primary_tag() {
+                    Some(primary_tag) => primary_tag,
+                    None => tagged_file.first_tag().expect("ERROR: No tags"),
+                };
 
-    let tag_title = tag.title();
-    let title = String::from(tag_title.as_deref().unwrap_or("None"));
-    let tag_artist = tag.artist();
-    let artist = String::from(tag_artist.as_deref().unwrap_or("None"));
+                let tag_title = tag.title();
+                let title = String::from(tag_title.as_deref().unwrap_or("None"));
+                let tag_artist = tag.artist();
+                let artist = String::from(tag_artist.as_deref().unwrap_or("None"));
 
-    if let Some(title) = tag.title() {
-        println!("{}", title);
+                if let Some(title) = tag.title() {
+                    println!("{}", title);
+                }
+                if let Some(artist) = tag.artist() {
+                    println!("{}", artist);
+                }
+
+                let properties = tagged_file.properties();
+                let seconds = properties.duration().as_secs();
+                println!("{}", seconds);
+
+                //println!("{}", unknown_first_tag.unwrap());
+                //println!("{}", id3v2.title);
+
+                player_state.musics.push(Audio {
+                    is_playing: (false),
+                    name: (title),
+                    author: (artist),
+                    length: seconds,
+                });
+            }
+        }
     }
-    if let Some(artist) = tag.artist() {
-        println!("{}", artist);
-    }
-
-    let properties = tagged_file.properties();
-    let seconds = properties.duration().as_secs();
-    println!("{}", seconds);
-
-
-    //println!("{}", unknown_first_tag.unwrap());
-    //println!("{}", id3v2.title);
-
-    player_state.musics.push(Audio {
-        is_playing: (false),
-        name: (title),
-        author: (artist),
-        length: seconds,
-    });
-
-    player_state.musics.push(Audio {
-        is_playing: (false),
-        name: (String::from("Hello from the other side")),
-        author: (String::from("Adele")),
-        length: 180,
-    });
-    player_state.musics.push(Audio {
-        is_playing: (false),
-        name: (String::from("Hail to the king")),
-        author: (String::from("Adele")),
-        length: 180,
-    });
-    player_state.musics.push(Audio {
-        is_playing: (false),
-        name: (String::from("Lemon Tree")),
-        author: (String::from("Adele")),
-        length: 180,
-    });
-    true
+    Ok(true)
 }
 
 fn run(mut terminal: DefaultTerminal, player_state: &mut PlayerState) -> Result<()> {
