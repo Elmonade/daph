@@ -21,6 +21,7 @@ use log::{info, trace, warn};
 use std::fs;
 use std::result::Result::Ok;
 use walkdir::WalkDir;
+mod playback;
 
 const PATH: &str = "/home/jello/Media/audio";
 
@@ -42,6 +43,7 @@ struct Audio {
     name: String,
     author: String,
     length: u64,
+    path: String,
 }
 
 enum Action {
@@ -90,23 +92,15 @@ fn load_audio(player_state: &mut PlayerState) -> Result<bool, Error> {
                 let title = String::from(tag_title.as_deref().unwrap_or("None"));
                 let tag_artist = tag.artist();
                 let artist = String::from(tag_artist.as_deref().unwrap_or("None"));
-
-                if let Some(title) = tag.title() {
-                    println!("{}", title);
-                }
-                if let Some(artist) = tag.artist() {
-                    println!("{}", artist);
-                }
-
                 let properties = tagged_file.properties();
                 let seconds = properties.duration().as_secs();
-                println!("{}", seconds);
 
                 player_state.musics.push(Audio {
                     is_playing: (false),
                     name: (title),
                     author: (artist),
                     length: seconds,
+                    path: String::from(path.to_str().unwrap()),
                 });
             }
         }
@@ -165,14 +159,15 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
             'p' => {
                 if let Some(index) = player_state.table_state.selected() {
                     if index == player_state.current_track_index {
-                        player_state.musics[index].is_playing =
-                            !player_state.musics[index].is_playing;
+                        player_state.musics[index].is_playing = !player_state.musics[index].is_playing;
                         player_state.is_playing = !player_state.is_playing;
+                        playback::play(index, true, &player_state.musics);
                     } else {
                         player_state.musics[index].is_playing = true;
                         player_state.musics[player_state.current_track_index].is_playing = false;
                         player_state.current_track_index = index;
                         player_state.is_playing = true;
+                        playback::play(index, false, &player_state.musics);
                     }
                 }
             }
@@ -197,7 +192,7 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
     Action::None
 }
 
-fn render_table<'a>(tracks: &Vec<Audio>) -> Table<'a, >{
+fn create_table(tracks: &Vec<Audio>) -> Table {
     let header = Row::new(["Song", "Artist", "Duration"])
         .style(Style::new().bold())
         .bottom_margin(1);
@@ -213,16 +208,20 @@ fn render_table<'a>(tracks: &Vec<Audio>) -> Table<'a, >{
             };
 
             //TODO: Is cloning the only way? Investigate.
-            Row::new([item.name.clone(), item.author.clone(), item.length.to_string()]).style(style)
+            Row::new([
+                item.name.clone(),
+                item.author.clone(),
+                item.length.to_string(),
+            ])
+            .style(style)
         })
         .collect();
 
-    let footer = Row::new([ "Lemon", "Lemon Tree", "000",
-    ]);
+    let footer = Row::new(["Lemon", "Lemon Tree", "000"]);
     let widths = [
+        Constraint::Percentage(50),
         Constraint::Percentage(30),
         Constraint::Percentage(20),
-        Constraint::Percentage(50),
     ];
     let table = Table::new(rows, widths)
         .header(header)
@@ -260,7 +259,6 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
             .render(right, frame.buffer_mut());
     }
 
-    //TODO: Implement Table inside music_list_area
     let [music_list_area] = Layout::vertical([Constraint::Fill(1)])
         .margin(1)
         .areas(left_top);
@@ -281,7 +279,7 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
     let musics = &player_state.musics;
-    let table = render_table(musics);
+    let table = create_table(musics);
     frame.render_stateful_widget(table, music_list_area, &mut player_state.table_state);
 
     if player_state.is_playing {
