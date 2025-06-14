@@ -163,7 +163,7 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
         event::KeyCode::Esc => return Action::Escape,
         event::KeyCode::Char(char) => match char {
             'p' => {
-                if let Some(index) = player_state.list_state.selected() {
+                if let Some(index) = player_state.table_state.selected() {
                     if index == player_state.current_track_index {
                         player_state.musics[index].is_playing =
                             !player_state.musics[index].is_playing;
@@ -180,16 +180,14 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
                 player_state.is_searching = true;
             }
             'D' => {
-                if let Some(index) = player_state.list_state.selected() {
+                if let Some(index) = player_state.table_state.selected() {
                     player_state.musics.remove(index);
                 }
             }
             'j' => {
-                //player_state.list_state.select_next();
                 player_state.table_state.select_next();
             }
             'k' => {
-                //player_state.list_state.select_previous();
                 player_state.table_state.select_previous();
             }
             _ => {}
@@ -199,7 +197,7 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
     Action::None
 }
 
-pub fn render_table<'a>(tracks: &Vec<Audio>) -> Table<'a, >{
+fn render_table<'a>(tracks: &Vec<Audio>) -> Table<'a, >{
     let header = Row::new(["Song", "Artist", "Duration"])
         .style(Style::new().bold())
         .bottom_margin(1);
@@ -215,7 +213,7 @@ pub fn render_table<'a>(tracks: &Vec<Audio>) -> Table<'a, >{
             };
 
             //TODO: Is cloning the only way? Investigate.
-            Row::new([item.name.clone(), item.author.clone(), item.length.to_string()])
+            Row::new([item.name.clone(), item.author.clone(), item.length.to_string()]).style(style)
         })
         .collect();
 
@@ -230,11 +228,12 @@ pub fn render_table<'a>(tracks: &Vec<Audio>) -> Table<'a, >{
         .header(header)
         .footer(footer.italic())
         .column_spacing(1)
-        .style(Color::White)
-        .row_highlight_style(Style::new().on_black().bold())
-        .column_highlight_style(Color::Gray)
-        .cell_highlight_style(Style::new().reversed().yellow())
-        .highlight_symbol("🍴 ");
+        //.style(Color::White)
+        //.row_highlight_style(Style::new().on_black().bold())
+        .row_highlight_style(Style::new().fg(Color::Green))
+        //.column_highlight_style(Color::Gray)
+        //.cell_highlight_style(Style::new().reversed().yellow())
+        .highlight_symbol("- ");
     table
 }
 
@@ -278,26 +277,6 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
         .title("PLAYER")
         .border_type(BorderType::Rounded)
         .fg(Color::Yellow);
-
-    let items: Vec<ListItem> = player_state
-        .musics
-        .iter()
-        .map(|item| {
-            let style = match item.is_playing {
-                true => Style::default()
-                    .fg(Color::Blue)
-                    .add_modifier(Modifier::BOLD),
-                _ => Style::default(),
-            };
-
-            let list_entry = format!("{} | {} | {}", item.name, item.author, item.length);
-            ListItem::new(list_entry).style(style)
-        })
-        .collect();
-
-    let list = List::new(items)
-        .highlight_symbol("-")
-        .highlight_spacing(HighlightSpacing::Always);
 
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
