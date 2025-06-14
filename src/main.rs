@@ -1,11 +1,12 @@
 use color_eyre::config::PanicReport;
 use color_eyre::eyre::{Error, Result};
 use crossterm::event::{self, Event, KeyEvent};
-use lofty::tag::{Accessor, Tag, TagExt};
+use lofty::tag::Accessor;
 use ratatui::Frame;
+use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::widgets::{
-    Block, BorderType, Borders, HighlightSpacing, List, ListItem, ListState, Padding,
+    Block, BorderType, HighlightSpacing, List, ListItem, ListState, Padding, Row, Table, TableState,
 };
 use ratatui::{
     DefaultTerminal,
@@ -32,6 +33,7 @@ struct PlayerState {
     is_playing: bool,
     current_track_index: usize,
     current_track: Audio,
+    table_state: TableState,
 }
 
 #[derive(Debug, Default)]
@@ -53,6 +55,9 @@ fn main() -> Result<()> {
     let mut state = PlayerState::default();
     state.is_playing = false;
     state.current_track_index = 0;
+    state.table_state = TableState::default();
+    state.table_state.select_first();
+    state.table_state.select_first_column();
 
     let _ = load_audio(&mut state);
 
@@ -180,16 +185,57 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
                 }
             }
             'j' => {
-                player_state.list_state.select_next();
+                //player_state.list_state.select_next();
+                player_state.table_state.select_next();
             }
             'k' => {
-                player_state.list_state.select_previous();
+                //player_state.list_state.select_previous();
+                player_state.table_state.select_previous();
             }
             _ => {}
         },
         _ => {}
     }
     Action::None
+}
+
+pub fn render_table<'a>(tracks: &Vec<Audio>) -> Table<'a, >{
+    let header = Row::new(["Song", "Artist", "Duration"])
+        .style(Style::new().bold())
+        .bottom_margin(1);
+
+    let rows: Vec<Row> = tracks
+        .iter()
+        .map(|item| {
+            let style = match item.is_playing {
+                true => Style::default()
+                    .fg(Color::Blue)
+                    .add_modifier(Modifier::BOLD),
+                _ => Style::default(),
+            };
+
+            //TODO: Is cloning the only way? Investigate.
+            Row::new([item.name.clone(), item.author.clone(), item.length.to_string()])
+        })
+        .collect();
+
+    let footer = Row::new([ "Lemon", "Lemon Tree", "000",
+    ]);
+    let widths = [
+        Constraint::Percentage(30),
+        Constraint::Percentage(20),
+        Constraint::Percentage(50),
+    ];
+    let table = Table::new(rows, widths)
+        .header(header)
+        .footer(footer.italic())
+        .column_spacing(1)
+        .style(Color::White)
+        .row_highlight_style(Style::new().on_black().bold())
+        .column_highlight_style(Color::Gray)
+        .cell_highlight_style(Style::new().reversed().yellow())
+        .highlight_symbol("🍴 ");
+    table
 }
 
 fn render(frame: &mut Frame, player_state: &mut PlayerState) {
@@ -255,7 +301,9 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
 
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
-    frame.render_stateful_widget(list, music_list_area, &mut player_state.list_state);
+    let musics = &player_state.musics;
+    let table = render_table(musics);
+    frame.render_stateful_widget(table, music_list_area, &mut player_state.table_state);
 
     if player_state.is_playing {
         Paragraph::new("Current music begin played.").render(player_area, frame.buffer_mut());
