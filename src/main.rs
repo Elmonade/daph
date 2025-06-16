@@ -14,7 +14,6 @@ use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::read_from_path;
 use rodio::{Decoder, OutputStream, Sink};
 use std::result::Result::Ok;
-use std::sync::mpsc::{Receiver, Sender, channel};
 use std::{fs::File, io::BufReader, path::PathBuf, thread};
 use walkdir::WalkDir;
 mod playback;
@@ -28,17 +27,10 @@ struct PlayerState {
     is_playing: bool,
     current_track_index: usize,
     table_state: TableState,
-    rx: Receiver<Command>,
-    tx: Sender<Command>,
-    sink: rodio::Sink,
 }
 
 impl Default for PlayerState {
     fn default() -> Self {
-        let (tx, rx) = std::sync::mpsc::channel();
-        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-        let sink = Sink::try_new(&stream_handle).unwrap();
-
         let mut table_state = TableState::default();
         table_state.select(Some(0)); // Select first row
 
@@ -49,9 +41,6 @@ impl Default for PlayerState {
             is_playing: false,
             current_track_index: 0,
             table_state,
-            rx,
-            tx,
-            sink,
         }
     }
 }
@@ -172,6 +161,37 @@ fn handle_search(key: KeyEvent, player_state: &mut PlayerState) -> Action {
     Action::None
 }
 
+fn play(path: PathBuf) {
+    let path = Some(path);
+    let (tx, rx) = std::sync::mpsc::channel::<Command>();
+    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+    let sink = Sink::try_new(&stream_handle).unwrap();
+    println!("{}", path);
+
+    let _ = thread::Builder::new()
+        .name("playback".to_string())
+        .spawn(move || {
+            let file = File::open(path).unwrap();
+
+            let buffer = BufReader::new(file);
+            let source = Decoder::new(buffer).unwrap();
+
+            sink.append(source);
+            sink.sleep_until_end();
+            loop {
+                if let Ok(command) = rx.recv() {
+                    println!("Received command.");
+                    sink.pause();
+                }
+                thread::sleep(std::time::Duration::from_millis(100));
+            }
+        });
+}
+
+fn pause() {
+    //tx.send(Command::Pause);
+}
+
 fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
     match key.code {
         event::KeyCode::Esc => return Action::Escape,
@@ -179,53 +199,15 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
             'p' => {
                 if let Some(index) = player_state.table_state.selected() {
                     if index == player_state.current_track_index {
-                        player_state.musics[index].is_playing =
-                            !player_state.musics[index].is_playing;
+                        player_state.musics[index].is_playing = !player_state.musics[index].is_playing;
                         player_state.is_playing = !player_state.is_playing;
-
-                        let _ =
-                            thread::Builder::new()
-                                .name("playback".to_string())
-                                .spawn(move || {
-                                    let file = File::open(PATH).unwrap();
-
-                                    let buffer = BufReader::new(file);
-                                    let source = Decoder::new(buffer).unwrap();
-
-                                    player_state.sink.append(source);
-                                    loop {
-                                        if let Ok(command) = player_state.rx.recv() {
-                                            println!("Received command.");
-                                            player_state.sink.pause();
-                                        }
-                                        thread::sleep(std::time::Duration::from_millis(100));
-                                    }
-                                });
-                        player_state.tx.send(Command::Pause);
+                        play(player_state.musics[index].path.clone());
                     } else {
                         player_state.musics[index].is_playing = true;
                         player_state.musics[player_state.current_track_index].is_playing = false;
                         player_state.current_track_index = index;
                         player_state.is_playing = true;
-                        let _ =
-                            thread::Builder::new()
-                                .name("playback".to_string())
-                                .spawn(move || {
-                                    let file = File::open(PATH).unwrap();
-
-                                    let buffer = BufReader::new(file);
-                                    let source = Decoder::new(buffer).unwrap();
-
-                                    player_state.sink.append(source);
-                                    loop {
-                                        if let Ok(command) = player_state.rx.recv() {
-                                            println!("Received command.");
-                                            player_state.sink.pause();
-                                        }
-                                        thread::sleep(std::time::Duration::from_millis(100));
-                                    }
-                                });
-                        player_state.tx.send(Command::Pause);
+                        play(player_state.musics[index].path.clone());
                     }
                 }
             }
