@@ -1,27 +1,46 @@
 use rodio::{Decoder, OutputStream, Sink};
-use std::{fs::File, io::BufReader, path::PathBuf, thread};
+use std::sync::mpsc::{Sender, channel};
+use std::{fs::File, io::BufReader, path::PathBuf, sync::mpsc::Receiver, thread};
 
-use crate::Audio;
+use crate::Command;
 
-// TODO: Spawn a thread for the playback.
-pub fn play(index: usize, _is_toggle: bool, path: PathBuf) {
-    let _ = thread::Builder::new()
-        .name("playback".to_string())
-        .spawn(move || {
-            let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-            let sink = Sink::try_new(&stream_handle).unwrap();
+pub struct PlayBack {
+    tx: Sender<Command>,
+    rx: Receiver<Command>,
+    sink: Sink,
+}
 
-            let file = File::open(path).unwrap();
+impl PlayBack {
+    pub fn new() -> Self {
+        let (tx, rx) = channel::<Command>();
+        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+        let sink = Sink::try_new(&stream_handle).unwrap();
+        Self { tx, rx, sink }
+    }
 
-            let buffer = BufReader::new(file);
-            let source = Decoder::new(buffer).unwrap();
+    pub fn sink_setup() {}
 
-            sink.append(source);
-            sink.sleep_until_end();
+    pub fn play(self: Self, _index: usize, _is_toggle: bool, path: PathBuf) {
+        let _ = thread::Builder::new()
+            .name("playback".to_string())
+            .spawn(move || {
+                let file = File::open(path).unwrap();
 
-            loop {
-                // TODO: Listen for command from main thread
-                thread::sleep(std::time::Duration::from_millis(100));
-            }
-        });
+                let buffer = BufReader::new(file);
+                let source = Decoder::new(buffer).unwrap();
+
+                self.sink.append(source);
+                loop {
+                    if let Ok(command) = self.rx.recv() {
+                        println!("Received command.");
+                        self.sink.pause();
+                    }
+                    thread::sleep(std::time::Duration::from_millis(100));
+                }
+            });
+    }
+
+    pub fn send_command(&self, command: Command) {
+        self.tx.send(command);
+    }
 }

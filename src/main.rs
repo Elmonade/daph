@@ -3,9 +3,7 @@ use crossterm::event::{self, Event, KeyEvent};
 use lofty::tag::Accessor;
 use ratatui::Frame;
 use ratatui::style::{Color, Modifier, Style, Stylize};
-use ratatui::widgets::{
-    Block, BorderType, Padding, Row, Table, TableState,
-};
+use ratatui::widgets::{Block, BorderType, Padding, Row, Table, TableState};
 use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Layout},
@@ -14,14 +12,15 @@ use ratatui::{
 
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::read_from_path;
-use std::path::PathBuf;
+use rodio::{Decoder, OutputStream, Sink};
 use std::result::Result::Ok;
+use std::sync::mpsc::{Receiver, Sender, channel};
+use std::{fs::File, io::BufReader, path::PathBuf, thread};
 use walkdir::WalkDir;
 mod playback;
 
 const PATH: &str = "/home/jello/Media/audio";
 
-#[derive(Debug, Default)]
 struct PlayerState {
     musics: Vec<Audio>,
     is_searching: bool,
@@ -29,6 +28,32 @@ struct PlayerState {
     is_playing: bool,
     current_track_index: usize,
     table_state: TableState,
+    rx: Receiver<Command>,
+    tx: Sender<Command>,
+    sink: rodio::Sink,
+}
+
+impl Default for PlayerState {
+    fn default() -> Self {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+        let sink = Sink::try_new(&stream_handle).unwrap();
+
+        let mut table_state = TableState::default();
+        table_state.select(Some(0)); // Select first row
+
+        Self {
+            musics: Vec::new(),
+            is_searching: false,
+            keyword: String::new(),
+            is_playing: false,
+            current_track_index: 0,
+            table_state,
+            rx,
+            tx,
+            sink,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -46,7 +71,7 @@ enum Action {
     Escape,
 }
 
-enum Command{
+enum Command {
     Pause,
     Play,
     Forward,
@@ -58,19 +83,11 @@ enum Command{
 fn main() -> Result<()> {
     env_logger::init();
     let mut state = PlayerState::default();
-    state.is_playing = false;
-    state.current_track_index = 0;
-    state.table_state = TableState::default();
-    state.table_state.select_first();
-    state.table_state.select_first_column();
-
     let _ = load_audio(&mut state);
-
+    let _ = ratatui::try_restore(); // Exit raw mode
     color_eyre::install()?;
     let terminal = ratatui::init();
     let result = run(terminal, &mut state);
-
-    let _ = ratatui::try_restore(); // Exit raw mode
     result
 }
 
@@ -165,13 +182,50 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
                         player_state.musics[index].is_playing =
                             !player_state.musics[index].is_playing;
                         player_state.is_playing = !player_state.is_playing;
-                        playback::play(index, true, player_state.musics[index].path.clone());
+
+                        let _ =
+                            thread::Builder::new()
+                                .name("playback".to_string())
+                                .spawn(move || {
+                                    let file = File::open(PATH).unwrap();
+
+                                    let buffer = BufReader::new(file);
+                                    let source = Decoder::new(buffer).unwrap();
+
+                                    player_state.sink.append(source);
+                                    loop {
+                                        if let Ok(command) = player_state.rx.recv() {
+                                            println!("Received command.");
+                                            player_state.sink.pause();
+                                        }
+                                        thread::sleep(std::time::Duration::from_millis(100));
+                                    }
+                                });
+                        player_state.tx.send(Command::Pause);
                     } else {
                         player_state.musics[index].is_playing = true;
                         player_state.musics[player_state.current_track_index].is_playing = false;
                         player_state.current_track_index = index;
                         player_state.is_playing = true;
-                        playback::play(index, false, player_state.musics[index].path.clone());
+                        let _ =
+                            thread::Builder::new()
+                                .name("playback".to_string())
+                                .spawn(move || {
+                                    let file = File::open(PATH).unwrap();
+
+                                    let buffer = BufReader::new(file);
+                                    let source = Decoder::new(buffer).unwrap();
+
+                                    player_state.sink.append(source);
+                                    loop {
+                                        if let Ok(command) = player_state.rx.recv() {
+                                            println!("Received command.");
+                                            player_state.sink.pause();
+                                        }
+                                        thread::sleep(std::time::Duration::from_millis(100));
+                                    }
+                                });
+                        player_state.tx.send(Command::Pause);
                     }
                 }
             }
@@ -289,9 +343,14 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
     if player_state.is_playing {
         // TODO: Only a mother can love type shi code.
         // It's not much but it's a honest work.
-        let current_track_name = player_state.musics[player_state.current_track_index].name.clone();
-        let current_track_artist = player_state.musics[player_state.current_track_index].author.clone();
-        Paragraph::new(format!("{} - {}", current_track_name, current_track_artist)).render(player_area, frame.buffer_mut());
+        let current_track_name = player_state.musics[player_state.current_track_index]
+            .name
+            .clone();
+        let current_track_artist = player_state.musics[player_state.current_track_index]
+            .author
+            .clone();
+        Paragraph::new(format!("{} - {}", current_track_name, current_track_artist))
+            .render(player_area, frame.buffer_mut());
     } else {
         Paragraph::new("No music is currently playing").render(player_area, frame.buffer_mut());
     }
