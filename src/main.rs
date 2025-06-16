@@ -162,22 +162,23 @@ fn handle_search(key: KeyEvent, player_state: &mut PlayerState) -> Action {
 }
 
 fn play(path: PathBuf) {
-    let path = Some(path);
     let (tx, rx) = std::sync::mpsc::channel::<Command>();
     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
     let sink = Sink::try_new(&stream_handle).unwrap();
-    println!("{}", path);
 
     let _ = thread::Builder::new()
         .name("playback".to_string())
         .spawn(move || {
+            println!("Thread spawned");
             let file = File::open(path).unwrap();
 
             let buffer = BufReader::new(file);
             let source = Decoder::new(buffer).unwrap();
 
+            println!("Append source");
             sink.append(source);
-            sink.sleep_until_end();
+            println!("Source added");
+            println!("Received command.");
             loop {
                 if let Ok(command) = rx.recv() {
                     println!("Received command.");
