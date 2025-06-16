@@ -1,24 +1,20 @@
-use color_eyre::config::PanicReport;
 use color_eyre::eyre::{Error, Result};
 use crossterm::event::{self, Event, KeyEvent};
 use lofty::tag::Accessor;
 use ratatui::Frame;
-use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::widgets::{
-    Block, BorderType, HighlightSpacing, List, ListItem, ListState, Padding, Row, Table, TableState,
+    Block, BorderType, Padding, Row, Table, TableState,
 };
 use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Layout},
-    symbols,
     widgets::{Paragraph, Widget},
 };
 
-use lofty::file::{AudioFile, TaggedFile, TaggedFileExt};
+use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::read_from_path;
-use log::{info, trace, warn};
-use std::fs;
+use std::path::PathBuf;
 use std::result::Result::Ok;
 use walkdir::WalkDir;
 mod playback;
@@ -28,22 +24,20 @@ const PATH: &str = "/home/jello/Media/audio";
 #[derive(Debug, Default)]
 struct PlayerState {
     musics: Vec<Audio>,
-    list_state: ListState,
     is_searching: bool,
     keyword: String,
     is_playing: bool,
     current_track_index: usize,
-    current_track: Audio,
     table_state: TableState,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct Audio {
     is_playing: bool,
     name: String,
     author: String,
     length: u64,
-    path: String,
+    path: PathBuf,
 }
 
 enum Action {
@@ -100,7 +94,7 @@ fn load_audio(player_state: &mut PlayerState) -> Result<bool, Error> {
                     name: (title),
                     author: (artist),
                     length: seconds,
-                    path: String::from(path.to_str().unwrap()),
+                    path: path.to_path_buf(),
                 });
             }
         }
@@ -159,7 +153,8 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
             'p' => {
                 if let Some(index) = player_state.table_state.selected() {
                     if index == player_state.current_track_index {
-                        player_state.musics[index].is_playing = !player_state.musics[index].is_playing;
+                        player_state.musics[index].is_playing =
+                            !player_state.musics[index].is_playing;
                         player_state.is_playing = !player_state.is_playing;
                         playback::play(index, true, &player_state.musics);
                     } else {
@@ -283,7 +278,11 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
     frame.render_stateful_widget(table, music_list_area, &mut player_state.table_state);
 
     if player_state.is_playing {
-        Paragraph::new("Current music begin played.").render(player_area, frame.buffer_mut());
+        // TODO: Only a mother can love type shi code.
+        // It's not much but it's a honest work.
+        let current_track_name = player_state.musics[player_state.current_track_index].name.clone();
+        let current_track_artist = player_state.musics[player_state.current_track_index].author.clone();
+        Paragraph::new(format!("{} - {}", current_track_name, current_track_artist)).render(player_area, frame.buffer_mut());
     } else {
         Paragraph::new("No music is currently playing").render(player_area, frame.buffer_mut());
     }
