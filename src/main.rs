@@ -46,6 +46,15 @@ enum Action {
     Escape,
 }
 
+enum Command{
+    Pause,
+    Play,
+    Forward,
+    Backward,
+    Next,
+    Previous,
+}
+
 fn main() -> Result<()> {
     env_logger::init();
     let mut state = PlayerState::default();
@@ -156,13 +165,13 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
                         player_state.musics[index].is_playing =
                             !player_state.musics[index].is_playing;
                         player_state.is_playing = !player_state.is_playing;
-                        playback::play(index, true, &player_state.musics);
+                        playback::play(index, true, player_state.musics[index].path.clone());
                     } else {
                         player_state.musics[index].is_playing = true;
                         player_state.musics[player_state.current_track_index].is_playing = false;
                         player_state.current_track_index = index;
                         player_state.is_playing = true;
-                        playback::play(index, false, &player_state.musics);
+                        playback::play(index, false, player_state.musics[index].path.clone());
                     }
                 }
             }
