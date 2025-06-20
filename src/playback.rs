@@ -26,7 +26,9 @@ pub fn play(index: usize, _is_toggle: bool, path: PathBuf, state: &mut PlayerSta
             sink.sleep_until_end();
 
             loop {
-                // TODO: Listen for command from main thread
+                if let Ok(command) = rx.try_recv() {
+                    println!("Received command.");
+                }
                 thread::sleep(std::time::Duration::from_millis(100));
             }
         });
