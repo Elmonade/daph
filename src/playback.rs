@@ -1,13 +1,19 @@
 use rodio::{Decoder, OutputStream, Sink};
-use std::{fs::File, io::BufReader, path::PathBuf, thread};
+use std::{fs::File, io::BufReader, path::PathBuf, sync::mpsc, thread};
 
 use crate::Audio;
+use crate::Command;
+use crate::PlayerState;
 
 // TODO: Spawn a thread for the playback.
-pub fn play(index: usize, _is_toggle: bool, path: PathBuf) {
+pub fn play(index: usize, _is_toggle: bool, path: PathBuf, state: &mut PlayerState) {
+    let (tx, rx) = mpsc::channel::<Command>();
+
+    state.tx = tx;
+
     let _ = thread::Builder::new()
         .name("playback".to_string())
-        .spawn(move || {
+        .spawn(|| {
             let (_stream, stream_handle) = OutputStream::try_default().unwrap();
             let sink = Sink::try_new(&stream_handle).unwrap();
 

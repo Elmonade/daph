@@ -3,9 +3,7 @@ use crossterm::event::{self, Event, KeyEvent};
 use lofty::tag::Accessor;
 use ratatui::Frame;
 use ratatui::style::{Color, Modifier, Style, Stylize};
-use ratatui::widgets::{
-    Block, BorderType, Padding, Row, Table, TableState,
-};
+use ratatui::widgets::{Block, BorderType, Padding, Row, Table, TableState};
 use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Layout},
@@ -16,12 +14,13 @@ use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::read_from_path;
 use std::path::PathBuf;
 use std::result::Result::Ok;
+use std::sync::mpsc::{self, Sender};
 use walkdir::WalkDir;
 mod playback;
 
 const PATH: &str = "/home/jello/Media/audio";
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct PlayerState {
     musics: Vec<Audio>,
     is_searching: bool,
@@ -29,6 +28,21 @@ struct PlayerState {
     is_playing: bool,
     current_track_index: usize,
     table_state: TableState,
+    tx: Sender<Command>,
+}
+impl Default for PlayerState {
+    fn default() -> Self {
+        let (tx, _rx) = mpsc::channel();
+        PlayerState {
+            is_playing: false,
+            current_track_index: 0,
+            table_state: TableState::default(),
+            musics: Vec::new(),
+            is_searching: false,
+            keyword: String::new(),
+            tx,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -46,7 +60,7 @@ enum Action {
     Escape,
 }
 
-enum Command{
+enum Command {
     Pause,
     Play,
     Forward,
@@ -58,9 +72,6 @@ enum Command{
 fn main() -> Result<()> {
     env_logger::init();
     let mut state = PlayerState::default();
-    state.is_playing = false;
-    state.current_track_index = 0;
-    state.table_state = TableState::default();
     state.table_state.select_first();
     state.table_state.select_first_column();
 
@@ -165,13 +176,23 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
                         player_state.musics[index].is_playing =
                             !player_state.musics[index].is_playing;
                         player_state.is_playing = !player_state.is_playing;
-                        playback::play(index, true, player_state.musics[index].path.clone());
+                        playback::play(
+                            index,
+                            true,
+                            player_state.musics[index].path.clone(),
+                            player_state,
+                        );
                     } else {
                         player_state.musics[index].is_playing = true;
                         player_state.musics[player_state.current_track_index].is_playing = false;
                         player_state.current_track_index = index;
                         player_state.is_playing = true;
-                        playback::play(index, false, player_state.musics[index].path.clone());
+                        playback::play(
+                            index,
+                            false,
+                            player_state.musics[index].path.clone(),
+                            player_state,
+                        );
                     }
                 }
             }
@@ -289,9 +310,14 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
     if player_state.is_playing {
         // TODO: Only a mother can love type shi code.
         // It's not much but it's a honest work.
-        let current_track_name = player_state.musics[player_state.current_track_index].name.clone();
-        let current_track_artist = player_state.musics[player_state.current_track_index].author.clone();
-        Paragraph::new(format!("{} - {}", current_track_name, current_track_artist)).render(player_area, frame.buffer_mut());
+        let current_track_name = player_state.musics[player_state.current_track_index]
+            .name
+            .clone();
+        let current_track_artist = player_state.musics[player_state.current_track_index]
+            .author
+            .clone();
+        Paragraph::new(format!("{} - {}", current_track_name, current_track_artist))
+            .render(player_area, frame.buffer_mut());
     } else {
         Paragraph::new("No music is currently playing").render(player_area, frame.buffer_mut());
     }
