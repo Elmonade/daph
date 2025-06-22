@@ -12,15 +12,15 @@ use ratatui::{
 
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::read_from_path;
+use rodio::{OutputStream, Sink};
 use std::path::PathBuf;
 use std::result::Result::Ok;
-use std::sync::mpsc::{self, Sender};
+use std::sync::mpsc::{self, Receiver, Sender};
 use walkdir::WalkDir;
 mod playback;
 
 const PATH: &str = "/home/jello/Media/audio";
 
-#[derive(Debug)]
 struct PlayerState {
     musics: Vec<Audio>,
     is_searching: bool,
@@ -29,10 +29,16 @@ struct PlayerState {
     current_track_index: usize,
     table_state: TableState,
     tx: Sender<Command>,
+    rx: Receiver<Command>,
+    message: String,
+    sink: rodio::Sink,
 }
 impl Default for PlayerState {
     fn default() -> Self {
-        let (tx, _rx) = mpsc::channel();
+        let (tx, rx) = mpsc::channel();
+        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+        let sink = Sink::try_new(&stream_handle).unwrap();
+
         PlayerState {
             is_playing: false,
             current_track_index: 0,
@@ -41,6 +47,9 @@ impl Default for PlayerState {
             is_searching: false,
             keyword: String::new(),
             tx,
+            rx,
+            message: String::from("Lemon"),
+            sink,
         }
     }
 }
@@ -60,6 +69,7 @@ enum Action {
     Escape,
 }
 
+#[derive(Debug)]
 enum Command {
     Pause,
     Play,
@@ -74,6 +84,7 @@ fn main() -> Result<()> {
     let mut state = PlayerState::default();
     state.table_state.select_first();
     state.table_state.select_first_column();
+    playback::setup(&mut state);
 
     let _ = load_audio(&mut state);
 
@@ -173,15 +184,28 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
             'p' => {
                 if let Some(index) = player_state.table_state.selected() {
                     if index == player_state.current_track_index {
-                        player_state.musics[index].is_playing =
-                            !player_state.musics[index].is_playing;
+                        if player_state.musics[index].is_playing {
+                            player_state.musics[index].is_playing = false;
+                            println!("Are you updated: {}", player_state.message);
+                            match player_state.tx.send(Command::Pause) {
+                                Ok(_) => println!("Sent the command"),
+                                Err(err) => println!("{}", err),
+                            }
+                        } else {
+                            playback::play(
+                                index,
+                                true,
+                                player_state.musics[index].path.clone(),
+                                player_state,
+                            );
+                            player_state.musics[index].is_playing = true;
+                            println!("Are you updated: {}", player_state.message);
+                            match player_state.tx.send(Command::Play) {
+                                Ok(_) => println!("Sent the command"),
+                                Err(err) => println!("{}", err),
+                            }
+                        }
                         player_state.is_playing = !player_state.is_playing;
-                        playback::play(
-                            index,
-                            true,
-                            player_state.musics[index].path.clone(),
-                            player_state,
-                        );
                     } else {
                         player_state.musics[index].is_playing = true;
                         player_state.musics[player_state.current_track_index].is_playing = false;
