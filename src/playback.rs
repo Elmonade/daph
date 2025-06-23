@@ -2,11 +2,9 @@ use rodio::{Decoder, OutputStream, Sink};
 use std::{fs::File, io::BufReader, path::PathBuf, sync::mpsc, thread};
 
 use crate::Command;
-use crate::PlayerState;
 
-pub fn setup(state: &mut PlayerState) {
+pub fn setup() -> mpsc::Sender<Command>{
     let (tx, rx) = mpsc::channel::<Command>();
-    state.tx = tx;
 
     let _ = thread::Builder::new()
         .name("playback".to_string())
@@ -21,6 +19,7 @@ pub fn setup(state: &mut PlayerState) {
                 thread::sleep(std::time::Duration::from_millis(100));
             }
         });
+    tx
 }
 
 pub(crate) fn audio_command(_message: Command, sink: &Sink) {
@@ -40,34 +39,21 @@ fn new_song(sink: &Sink, path: &PathBuf) {
     let file = File::open(path).unwrap();
     let buffer = BufReader::new(file);
     let source = Decoder::new(buffer).unwrap();
-    println!("Inside play_pause command");
-    println!("Should play: {:?}", path.to_str());
 
     sink.append(source);
 }
 
-fn play_pause(sink: &Sink, path: &PathBuf) {
-    let file = File::open(path).unwrap();
-    let buffer = BufReader::new(file);
-    let source = Decoder::new(buffer).unwrap();
-    println!("Inside play_pause command");
-    println!("Should play: {:?}", path.to_str());
-
-    sink.append(source);
-
+fn play_pause(sink: &Sink, _path: &PathBuf) {
     match sink.is_paused() {
         false => sink.pause(),
         true => sink.play(),
     }
 }
 
-fn skip_forward(sink: &Sink) {
-    // Assuming we will always have a queue.
-    // Also, it needs to loop around.
-    sink.skip_one();
+fn skip_forward(_sink: &Sink) {
+    todo!();
 }
 
 fn skip_backward(_sink: &Sink) {
-    //TODO: Play the previous song from the "cache?".
-    // Set to 00:00 if >5sec, otherwise skip the current song.
+    todo!();
 }

@@ -75,7 +75,7 @@ fn main() -> Result<()> {
     let mut state = PlayerState::default();
     state.table_state.select_first();
     state.table_state.select_first_column();
-    playback::setup(&mut state);
+    state.tx = playback::setup();
 
     let _ = load_audio(&mut state);
 
@@ -178,8 +178,7 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
                         player_state.musics[index].is_playing = !player_state.musics[index].is_playing;
                         player_state.is_playing = !player_state.is_playing;
 
-                        let path = player_state.musics[index].path.clone();
-                        match player_state.tx.send(Command::PlayPause(path, 10)) {
+                        match player_state.tx.send(Command::PlayPause(PathBuf::new(), 10)) {
                             Ok(_) => println!("Sent the command"),
                             Err(err) => println!("{}", err),
                         }
