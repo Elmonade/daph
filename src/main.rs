@@ -12,10 +12,9 @@ use ratatui::{
 
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::read_from_path;
-use rodio::{OutputStream, Sink};
 use std::path::PathBuf;
 use std::result::Result::Ok;
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Sender};
 use walkdir::WalkDir;
 mod playback;
 
@@ -29,15 +28,10 @@ struct PlayerState {
     current_track_index: usize,
     table_state: TableState,
     tx: Sender<Command>,
-    rx: Receiver<Command>,
-    message: String,
-    sink: rodio::Sink,
 }
 impl Default for PlayerState {
     fn default() -> Self {
-        let (tx, rx) = mpsc::channel();
-        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-        let sink = Sink::try_new(&stream_handle).unwrap();
+        let (tx, _rx) = mpsc::channel();
 
         PlayerState {
             is_playing: false,
@@ -47,9 +41,6 @@ impl Default for PlayerState {
             is_searching: false,
             keyword: String::new(),
             tx,
-            rx,
-            message: String::from("Lemon"),
-            sink,
         }
     }
 }
@@ -71,12 +62,12 @@ enum Action {
 
 #[derive(Debug)]
 enum Command {
-    Pause,
-    Play,
-    Forward,
-    Backward,
-    Next,
-    Previous,
+    PlayPause(PathBuf, i32),
+    Forward(PathBuf, i32),
+    Backward(PathBuf, i32),
+    Next(PathBuf, i32),
+    Previous(PathBuf, i32),
+    New(PathBuf, i32),
 }
 
 fn main() -> Result<()> {
@@ -184,39 +175,25 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
             'p' => {
                 if let Some(index) = player_state.table_state.selected() {
                     if index == player_state.current_track_index {
-                        if player_state.musics[index].is_playing {
-                            player_state.musics[index].is_playing = false;
-                            println!("Are you updated: {}", player_state.message);
-                            match player_state.tx.send(Command::Pause) {
-                                Ok(_) => println!("Sent the command"),
-                                Err(err) => println!("{}", err),
-                            }
-                        } else {
-                            playback::play(
-                                index,
-                                true,
-                                player_state.musics[index].path.clone(),
-                                player_state,
-                            );
-                            player_state.musics[index].is_playing = true;
-                            println!("Are you updated: {}", player_state.message);
-                            match player_state.tx.send(Command::Play) {
-                                Ok(_) => println!("Sent the command"),
-                                Err(err) => println!("{}", err),
-                            }
-                        }
+                        player_state.musics[index].is_playing = !player_state.musics[index].is_playing;
                         player_state.is_playing = !player_state.is_playing;
+
+                        let path = player_state.musics[index].path.clone();
+                        match player_state.tx.send(Command::PlayPause(path, 10)) {
+                            Ok(_) => println!("Sent the command"),
+                            Err(err) => println!("{}", err),
+                        }
                     } else {
                         player_state.musics[index].is_playing = true;
                         player_state.musics[player_state.current_track_index].is_playing = false;
                         player_state.current_track_index = index;
                         player_state.is_playing = true;
-                        playback::play(
-                            index,
-                            false,
-                            player_state.musics[index].path.clone(),
-                            player_state,
-                        );
+
+                        let path = player_state.musics[index].path.clone();
+                        match player_state.tx.send(Command::New(path, 10)) {
+                            Ok(_) => println!("Sent the command"),
+                            Err(err) => println!("{}", err),
+                        }
                     }
                 }
             }
