@@ -28,6 +28,7 @@ struct PlayerState {
     current_track_index: usize,
     table_state: TableState,
     tx: Sender<Command>,
+    number_of_tracks: usize,
 }
 impl Default for PlayerState {
     fn default() -> Self {
@@ -41,6 +42,7 @@ impl Default for PlayerState {
             is_searching: false,
             keyword: String::new(),
             tx,
+            number_of_tracks: 0,
         }
     }
 }
@@ -93,6 +95,7 @@ fn load_audio(player_state: &mut PlayerState) -> Result<bool, Error> {
         let entry = entry?;
         if let Some(extension) = entry.path().extension() {
             if extension == "mp3" || extension == "flac" || extension == "wav" {
+                player_state.number_of_tracks += 1;
                 let path = entry.path();
                 let tagged_file = match read_from_path(path) {
                     Ok(it) => it,
@@ -175,7 +178,8 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
             'p' => {
                 if let Some(index) = player_state.table_state.selected() {
                     if index == player_state.current_track_index {
-                        player_state.musics[index].is_playing = !player_state.musics[index].is_playing;
+                        player_state.musics[index].is_playing =
+                            !player_state.musics[index].is_playing;
                         player_state.is_playing = !player_state.is_playing;
 
                         match player_state.tx.send(Command::PlayPause(PathBuf::new(), 10)) {
@@ -209,6 +213,41 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
             }
             'k' => {
                 player_state.table_state.select_previous();
+            }
+            // TODO: Add boundary check.
+            '<' => {
+                let mut index = player_state.current_track_index;
+                if index > 0 {
+                    index -= 1;
+                }
+                player_state.current_track_index = index;
+
+                player_state.musics[index + 1].is_playing = false;
+                player_state.musics[index].is_playing = true;
+                player_state.is_playing = true;
+
+                let path = player_state.musics[index].path.clone();
+                match player_state.tx.send(Command::New(path, 10)) {
+                    Ok(_) => println!("Sent the command"),
+                    Err(err) => println!("{}", err),
+                }
+            }
+            '>' => {
+                let mut index = player_state.current_track_index;
+                if index < player_state.number_of_tracks - 1 {
+                    index += 1;
+                }
+                player_state.current_track_index = index;
+
+                player_state.musics[index - 1].is_playing = false;
+                player_state.musics[index].is_playing = true;
+                player_state.is_playing = true;
+
+                let path = player_state.musics[index].path.clone();
+                match player_state.tx.send(Command::New(path, 10)) {
+                    Ok(_) => println!("Sent the command"),
+                    Err(err) => println!("{}", err),
+                }
             }
             _ => {}
         },

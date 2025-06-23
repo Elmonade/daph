@@ -25,7 +25,7 @@ pub fn setup() -> mpsc::Sender<Command>{
 pub(crate) fn audio_command(_message: Command, sink: &Sink) {
     match _message {
         Command::PlayPause(path, _) => play_pause(sink, &path),
-        Command::Forward(_, _) => skip_forward(sink),
+        Command::Forward(path, _) => skip_forward(sink, &path),
         Command::Backward(_, _) => skip_backward(sink),
         Command::New(path, _) => new_song(sink, &path),
         Command::Next(_, _) => todo!(),
@@ -50,8 +50,14 @@ fn play_pause(sink: &Sink, _path: &PathBuf) {
     }
 }
 
-fn skip_forward(_sink: &Sink) {
-    todo!();
+fn skip_forward(sink: &Sink, path: &PathBuf) {
+    sink.stop();
+
+    let file = File::open(path).unwrap();
+    let buffer = BufReader::new(file);
+    let source = Decoder::new(buffer).unwrap();
+
+    sink.append(source);
 }
 
 fn skip_backward(_sink: &Sink) {
