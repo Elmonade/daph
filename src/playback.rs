@@ -40,6 +40,8 @@ fn new_song(sink: &Sink, path: &PathBuf) {
     let buffer = BufReader::new(file);
     let source = Decoder::new(buffer).unwrap();
 
+    // Add 3 songs when loading, index -,+ 1.
+    // This way sink.skip_one can be used.
     sink.append(source);
 }
 
