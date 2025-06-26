@@ -3,7 +3,7 @@ use std::{fs::File, io::BufReader, path::PathBuf, sync::mpsc, thread};
 
 use crate::Command;
 
-pub fn setup() -> mpsc::Sender<Command>{
+pub fn setup() -> mpsc::Sender<Command> {
     let (tx, rx) = mpsc::channel::<Command>();
 
     let _ = thread::Builder::new()
@@ -13,7 +13,6 @@ pub fn setup() -> mpsc::Sender<Command>{
             let sink = Sink::try_new(&stream_handle).unwrap();
             loop {
                 if let Ok(command) = rx.try_recv() {
-                    println!("Received command: {:?}", command);
                     audio_command(command, &sink);
                 }
                 thread::sleep(std::time::Duration::from_millis(100));
@@ -34,15 +33,42 @@ pub(crate) fn audio_command(_message: Command, sink: &Sink) {
 }
 
 fn new_song(sink: &Sink, path: &PathBuf) {
-    sink.stop();
+    // Add 3 songs when loading, index -,+ 1.
+    // This way sink.skip_one can be used.
+    if sink.is_paused() {
+        // TODO: This branch doesn't work.
+        sink.clear();
+        println!("New song on paused sink");
+        let file = File::open(path).unwrap();
+        let buffer = BufReader::new(file);
+        let source = Decoder::new(buffer).unwrap();
 
+        sink.append(source);
+    } else {
+        sink.stop();
+        let file = File::open(path).unwrap();
+        let buffer = BufReader::new(file);
+        let source = Decoder::new(buffer).unwrap();
+
+        sink.append(source);
+    }
+
+
+    /*
+    let was_paused = sink.is_paused();
+
+    sink.clear();
+    println!("New song on paused sink");
     let file = File::open(path).unwrap();
     let buffer = BufReader::new(file);
     let source = Decoder::new(buffer).unwrap();
 
-    // Add 3 songs when loading, index -,+ 1.
-    // This way sink.skip_one can be used.
     sink.append(source);
+
+    if !was_paused {
+        sink.play();
+    }
+    */
 }
 
 fn play_pause(sink: &Sink, _path: &PathBuf) {

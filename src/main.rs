@@ -177,50 +177,51 @@ fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
         event::KeyCode::Char(char) => match char {
             'p' => {
                 // When paused, changing songs not working. Paused current_index is kept same.
-                if let Some(selected_index) = player_state.table_state.selected() {
-                    if let Some(current_index) = player_state.current_track_index {
+                // TODO: Use of unwrap is discouraged. Handle the possible error.
+                let selected_index = player_state.table_state.selected().unwrap();
+                match player_state.current_track_index {
+                    Some(current_index) => {
                         if selected_index == current_index {
                             player_state.musics[selected_index].is_playing =
                                 !player_state.musics[selected_index].is_playing;
-                            player_state.is_playing = !player_state.is_playing;
 
-                            match player_state.tx.send(Command::PlayPause(PathBuf::new(), 10)) {
-                                Ok(_) => println!("Sent the command"),
-                                Err(err) => println!("{}", err),
-                            }
-                            if !player_state.is_playing {
+                            if player_state.is_playing {
+                                player_state.is_playing = false;
                                 player_state.current_track_index = None;
+                            } else {
+                                player_state.is_playing = true;
                             }
+
+                            player_state
+                                .tx
+                                .send(Command::PlayPause(PathBuf::new(), 10))
+                                .unwrap_or(());
                         } else {
+                            println!("New song - While song is currently playing");
                             player_state.musics[selected_index].is_playing = true;
                             player_state.musics[current_index].is_playing = false;
                             player_state.current_track_index = Some(selected_index);
                             player_state.is_playing = true;
 
                             let path = player_state.musics[selected_index].path.clone();
-                            match player_state.tx.send(Command::New(path, 10)) {
-                                Ok(_) => println!("Sent the command"),
-                                Err(err) => println!("{}", err),
-                            }
-
-                            if !player_state.is_playing {
-                                player_state.current_track_index = None;
-                            }
+                            player_state
+                                .tx
+                                .send(Command::New(path, 10))
+                                .unwrap_or(());
                         }
-                    } else {
+                    }
+                    None => {
+                        println!("New song");
                         //TODO: Refactor
                         player_state.musics[selected_index].is_playing = true;
                         player_state.current_track_index = Some(selected_index);
                         player_state.is_playing = true;
 
                         let path = player_state.musics[selected_index].path.clone();
-                        match player_state.tx.send(Command::New(path, 10)) {
-                            Ok(_) => println!("Sent the command"),
-                            Err(err) => println!("{}", err),
-                        }
-                        if !player_state.is_playing {
-                            player_state.current_track_index = None;
-                        }
+                        player_state
+                            .tx
+                            .send(Command::New(path, 10))
+                            .unwrap_or(());
                     }
                 }
             }
