@@ -171,106 +171,92 @@ fn handle_search(key: KeyEvent, player_state: &mut PlayerState) -> Action {
     Action::None
 }
 
-fn handle_button(key: KeyEvent, player_state: &mut PlayerState) -> Action {
+fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
     match key.code {
         event::KeyCode::Esc => return Action::Escape,
         event::KeyCode::Char(char) => match char {
             'p' => {
                 // When paused, changing songs not working. Paused current_index is kept same.
                 // TODO: Use of unwrap is discouraged. Handle the possible error.
-                let selected_index = player_state.table_state.selected().unwrap();
-                match player_state.current_track_index {
+                let selected_index = state.table_state.selected().unwrap();
+                match state.current_track_index {
                     Some(current_index) => {
+                        println!("{selected_index} == {current_index}");
                         if selected_index == current_index {
-                            player_state.musics[selected_index].is_playing =
-                                !player_state.musics[selected_index].is_playing;
-
-                            if player_state.is_playing {
-                                player_state.is_playing = false;
-                                player_state.current_track_index = None;
-                            } else {
-                                player_state.is_playing = true;
-                            }
-
-                            player_state
+                            state.musics[selected_index].is_playing = !state.musics[selected_index].is_playing;
+                            state.is_playing = !state.is_playing;
+                            state
                                 .tx
                                 .send(Command::PlayPause(PathBuf::new(), 10))
                                 .unwrap_or(());
                         } else {
-                            println!("New song - While song is currently playing");
-                            player_state.musics[selected_index].is_playing = true;
-                            player_state.musics[current_index].is_playing = false;
-                            player_state.current_track_index = Some(selected_index);
-                            player_state.is_playing = true;
+                            state.musics[selected_index].is_playing = true;
+                            state.musics[current_index].is_playing = false;
+                            state.current_track_index = Some(selected_index);
+                            state.is_playing = true;
 
-                            let path = player_state.musics[selected_index].path.clone();
-                            player_state
-                                .tx
-                                .send(Command::New(path, 10))
-                                .unwrap_or(());
+                            let path = state.musics[selected_index].path.clone();
+                            state.tx.send(Command::New(path, 10)).unwrap_or(());
                         }
                     }
                     None => {
-                        println!("New song");
+                        println!("New song - current_index = None");
                         //TODO: Refactor
-                        player_state.musics[selected_index].is_playing = true;
-                        player_state.current_track_index = Some(selected_index);
-                        player_state.is_playing = true;
+                        state.musics[selected_index].is_playing = true;
+                        state.current_track_index = Some(selected_index);
+                        state.is_playing = true;
 
-                        let path = player_state.musics[selected_index].path.clone();
-                        player_state
-                            .tx
-                            .send(Command::New(path, 10))
-                            .unwrap_or(());
+                        let path = state.musics[selected_index].path.clone();
+                        state.tx.send(Command::New(path, 10)).unwrap_or(());
                     }
                 }
             }
             '/' => {
-                player_state.is_searching = true;
+                state.is_searching = true;
             }
             'D' => {
-                if let Some(index) = player_state.table_state.selected() {
-                    player_state.musics.remove(index);
+                if let Some(index) = state.table_state.selected() {
+                    state.musics.remove(index);
                 }
             }
             'j' => {
-                player_state.table_state.select_next();
+                state.table_state.select_next();
             }
             'k' => {
-                player_state.table_state.select_previous();
+                state.table_state.select_previous();
             }
             // TODO: Should it wrap around?
             '<' => {
-                if let Some(mut index) = player_state.current_track_index {
+                if let Some(mut index) = state.current_track_index {
                     if index > 0 {
                         index -= 1;
                     }
-                    player_state.current_track_index = Some(index);
+                    state.current_track_index = Some(index);
 
-                    player_state.musics[index + 1].is_playing = false;
-                    player_state.musics[index].is_playing = true;
-                    player_state.is_playing = true;
+                    state.musics[index + 1].is_playing = false;
+                    state.musics[index].is_playing = true;
+                    state.is_playing = true;
 
-                    let path = player_state.musics[index].path.clone();
-                    match player_state.tx.send(Command::New(path, 10)) {
+                    let path = state.musics[index].path.clone();
+                    match state.tx.send(Command::New(path, 10)) {
                         Ok(_) => println!("Sent the command"),
                         Err(err) => println!("{}", err),
                     }
                 }
             }
             '>' => {
-                if let Some(mut index) = player_state.current_track_index {
-                    if index < player_state.number_of_tracks - 1 {
+                if let Some(mut index) = state.current_track_index {
+                    if index < state.number_of_tracks - 1 {
                         index += 1;
                     }
-                    player_state.current_track_index = Some(index);
+                    state.current_track_index = Some(index);
 
-                    player_state.musics[index - 1].is_playing = false;
-                    player_state.musics[index].is_playing = true;
-                    player_state.is_playing = true;
+                    state.musics[index - 1].is_playing = false;
+                    state.musics[index].is_playing = true;
+                    state.is_playing = true;
 
-                    let path = player_state.musics[index].path.clone();
-                    match player_state.tx.send(Command::New(path, 10)) {
+                    let path = state.musics[index].path.clone();
+                    match state.tx.send(Command::New(path, 10)) {
                         Ok(_) => println!("Sent the command"),
                         Err(err) => println!("{}", err),
                     }
@@ -383,6 +369,7 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
             index = current_index;
         }
 
+        // TODO: Use iterator to replace the clone
         let current_track_name = player_state.musics[index].name.clone();
         let current_track_artist = player_state.musics[index].author.clone();
         Paragraph::new(format!("{} - {}", current_track_name, current_track_artist))

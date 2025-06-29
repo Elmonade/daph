@@ -33,17 +33,15 @@ pub(crate) fn audio_command(_message: Command, sink: &Sink) {
 }
 
 fn new_song(sink: &Sink, path: &PathBuf) {
-    // Add 3 songs when loading, index -,+ 1.
-    // This way sink.skip_one can be used.
     if sink.is_paused() {
-        // TODO: This branch doesn't work.
-        sink.clear();
         println!("New song on paused sink");
         let file = File::open(path).unwrap();
         let buffer = BufReader::new(file);
         let source = Decoder::new(buffer).unwrap();
 
         sink.append(source);
+        sink.skip_one();
+        sink.play();
     } else {
         sink.stop();
         let file = File::open(path).unwrap();
@@ -52,29 +50,18 @@ fn new_song(sink: &Sink, path: &PathBuf) {
 
         sink.append(source);
     }
-
-
-    /*
-    let was_paused = sink.is_paused();
-
-    sink.clear();
-    println!("New song on paused sink");
-    let file = File::open(path).unwrap();
-    let buffer = BufReader::new(file);
-    let source = Decoder::new(buffer).unwrap();
-
-    sink.append(source);
-
-    if !was_paused {
-        sink.play();
-    }
-    */
 }
 
 fn play_pause(sink: &Sink, _path: &PathBuf) {
     match sink.is_paused() {
-        false => sink.pause(),
-        true => sink.play(),
+        false => {
+            println!("PAUSE");
+            sink.pause();
+        }
+        true => {
+            println!("PLAY");
+            sink.play();
+        }
     }
 }
 
