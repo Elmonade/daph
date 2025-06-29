@@ -175,15 +175,20 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
     match key.code {
         event::KeyCode::Esc => return Action::Escape,
         event::KeyCode::Char(char) => match char {
+            ' ' => {
+                state
+                    .tx
+                    .send(Command::PlayPause(PathBuf::new(), 10))
+                    .unwrap_or(());
+            }
             'p' => {
-                // When paused, changing songs not working. Paused current_index is kept same.
                 // TODO: Use of unwrap is discouraged. Handle the possible error.
                 let selected_index = state.table_state.selected().unwrap();
                 match state.current_track_index {
                     Some(current_index) => {
-                        println!("{selected_index} == {current_index}");
                         if selected_index == current_index {
-                            state.musics[selected_index].is_playing = !state.musics[selected_index].is_playing;
+                            state.musics[selected_index].is_playing =
+                                !state.musics[selected_index].is_playing;
                             state.is_playing = !state.is_playing;
                             state
                                 .tx
@@ -200,7 +205,6 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                         }
                     }
                     None => {
-                        println!("New song - current_index = None");
                         //TODO: Refactor
                         state.musics[selected_index].is_playing = true;
                         state.current_track_index = Some(selected_index);
@@ -238,10 +242,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                     state.is_playing = true;
 
                     let path = state.musics[index].path.clone();
-                    match state.tx.send(Command::New(path, 10)) {
-                        Ok(_) => println!("Sent the command"),
-                        Err(err) => println!("{}", err),
-                    }
+                    state.tx.send(Command::New(path, 10)).unwrap_or(());
                 }
             }
             '>' => {
@@ -256,10 +257,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                     state.is_playing = true;
 
                     let path = state.musics[index].path.clone();
-                    match state.tx.send(Command::New(path, 10)) {
-                        Ok(_) => println!("Sent the command"),
-                        Err(err) => println!("{}", err),
-                    }
+                    state.tx.send(Command::New(path, 10)).unwrap_or(());
                 }
             }
             _ => {}
@@ -294,7 +292,8 @@ fn create_table(tracks: &Vec<Audio>) -> Table {
         })
         .collect();
 
-    let footer = Row::new(["Lemon", "Lemon Tree", "000"]);
+    //let footer = Row::new(["Lemon", "Lemon Tree", "000"]);
+
     let widths = [
         Constraint::Percentage(50),
         Constraint::Percentage(30),
@@ -302,7 +301,7 @@ fn create_table(tracks: &Vec<Audio>) -> Table {
     ];
     let table = Table::new(rows, widths)
         .header(header)
-        .footer(footer.italic())
+        //.footer(footer.italic())
         .column_spacing(1)
         //.style(Color::White)
         //.row_highlight_style(Style::new().on_black().bold())
@@ -344,7 +343,7 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
         .areas(left_bottom);
 
     let left_top_block = Block::bordered()
-        .title("AUDIO")
+        .title("LIBRARY")
         .border_type(BorderType::Rounded)
         .fg(Color::Yellow);
 

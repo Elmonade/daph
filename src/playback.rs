@@ -34,11 +34,11 @@ pub(crate) fn audio_command(_message: Command, sink: &Sink) {
 
 fn new_song(sink: &Sink, path: &PathBuf) {
     if sink.is_paused() {
-        println!("New song on paused sink");
         let file = File::open(path).unwrap();
         let buffer = BufReader::new(file);
         let source = Decoder::new(buffer).unwrap();
 
+        //TODO: Does queue get full? I assume it's based on RAM.
         sink.append(source);
         sink.skip_one();
         sink.play();
@@ -55,11 +55,9 @@ fn new_song(sink: &Sink, path: &PathBuf) {
 fn play_pause(sink: &Sink, _path: &PathBuf) {
     match sink.is_paused() {
         false => {
-            println!("PAUSE");
             sink.pause();
         }
         true => {
-            println!("PLAY");
             sink.play();
         }
     }
