@@ -186,11 +186,8 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
                 */
 
                 let path = state.musics[index].path.clone();
-                //state.tx.send(Command::New(path, 10)).unwrap_or(());
                 state.tx.send(Command::Append(path, 10)).unwrap_or(());
             }
-
-            thread::sleep(time::Duration::from_millis(100));
         }
 
         /*
