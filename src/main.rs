@@ -13,7 +13,7 @@ use ratatui::{
 
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::read_from_path;
-use std::path::PathBuf;
+use rodio::{Decoder, OutputStream, Sink};
 use std::result::Result::Ok;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
@@ -55,6 +55,22 @@ impl Default for PlayerState {
     }
 }
 
+impl Default for PlayerState {
+    fn default() -> Self {
+        let mut table_state = TableState::default();
+        table_state.select(Some(0)); // Select first row
+
+        Self {
+            musics: Vec::new(),
+            is_searching: false,
+            keyword: String::new(),
+            is_playing: false,
+            current_track_index: 0,
+            table_state,
+        }
+    }
+}
+
 #[derive(Debug)]
 struct Audio {
     is_playing: bool,
@@ -91,12 +107,10 @@ fn main() -> Result<()> {
     state.sink_rx = sink_rx;
 
     let _ = load_audio(&mut state);
-
+    let _ = ratatui::try_restore(); // Exit raw mode
     color_eyre::install()?;
     let terminal = ratatui::init();
     let result = run(terminal, &mut state);
-
-    let _ = ratatui::try_restore(); // Exit raw mode
     result
 }
 
