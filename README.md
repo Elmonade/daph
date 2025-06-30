@@ -1,4 +1,4 @@
-![](logo.svg)
+![](logo.png)
 
 A music player written in Rust using:
 - [Ratatui](https://docs.rs/ratatui/latest/ratatui/)

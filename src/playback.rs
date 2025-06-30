@@ -1,46 +1,109 @@
 use rodio::{Decoder, OutputStream, Sink};
-use std::sync::mpsc::{Sender, channel};
-use std::{fs::File, io::BufReader, path::PathBuf, sync::mpsc::Receiver, thread};
+use std::{fs::File, io::BufReader, path::PathBuf, sync::mpsc, thread, time};
 
 use crate::Command;
 
-pub struct PlayBack {
-    tx: Sender<Command>,
-    rx: Receiver<Command>,
-    sink: Sink,
+pub(crate) struct SinkState {
+    pub que_len: usize,
+    pub is_paused: bool,
+    pub is_empty: bool,
 }
 
-impl PlayBack {
-    pub fn new() -> Self {
-        let (tx, rx) = channel::<Command>();
-        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-        let sink = Sink::try_new(&stream_handle).unwrap();
-        Self { tx, rx, sink }
-    }
+pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
+    let (command_tx, command_rx) = mpsc::channel::<Command>();
+    let (state_tx, state_rx) = mpsc::channel::<SinkState>();
 
-    pub fn sink_setup() {}
+    let _ = thread::Builder::new()
+        .name("playback".to_string())
+        .spawn(move || {
+            let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+            let sink = Sink::try_new(&stream_handle).unwrap();
 
-    pub fn play(self: Self, _index: usize, _is_toggle: bool, path: PathBuf) {
-        let _ = thread::Builder::new()
-            .name("playback".to_string())
-            .spawn(move || {
-                let file = File::open(path).unwrap();
-
-                let buffer = BufReader::new(file);
-                let source = Decoder::new(buffer).unwrap();
-
-                self.sink.append(source);
-                loop {
-                    if let Ok(command) = self.rx.recv() {
-                        println!("Received command.");
-                        self.sink.pause();
-                    }
-                    thread::sleep(std::time::Duration::from_millis(100));
+            loop {
+                if let Ok(command) = command_rx.try_recv() {
+                    audio_command(command, &sink);
                 }
-            });
-    }
 
-    pub fn send_command(&self, command: Command) {
-        self.tx.send(command);
+                //TODO: Not a good idea to recreate this variable every 100ms.
+                let sink_state = SinkState {
+                    que_len: sink.len(),
+                    is_paused: sink.is_paused(),
+                    is_empty: sink.empty(),
+                };
+
+                state_tx.send(sink_state).unwrap_or(());
+
+                thread::sleep(time::Duration::from_millis(100));
+            }
+        });
+    (command_tx, state_rx)
+}
+
+fn audio_command(_message: Command, sink: &Sink) {
+    match _message {
+        Command::Append(path, _) => append(sink, &path),
+        Command::PlayPause(path, _) => play_pause(sink, &path),
+        Command::Forward(path, _) => skip_forward(sink, &path),
+        Command::Backward(_, _) => skip_backward(sink),
+        Command::New(path, _) => new_song(sink, &path),
+        Command::Next(_, _) => next(sink),
+        Command::Previous(_, _) => todo!(),
     }
+}
+
+fn next(sink: &Sink) {
+    sink.skip_one();
+}
+
+fn append(sink: &Sink, path: &PathBuf) {
+    let file = File::open(path).unwrap();
+    let buffer = BufReader::new(file);
+    let source = Decoder::new(buffer).unwrap();
+
+    sink.append(source);
+}
+
+fn new_song(sink: &Sink, path: &PathBuf) {
+    if sink.is_paused() {
+        let file = File::open(path).unwrap();
+        let buffer = BufReader::new(file);
+        let source = Decoder::new(buffer).unwrap();
+
+        //TODO: Does queue get full? I assume it's based on RAM.
+        sink.append(source);
+        sink.skip_one();
+        sink.play();
+    } else {
+        sink.stop();
+        let file = File::open(path).unwrap();
+        let buffer = BufReader::new(file);
+        let source = Decoder::new(buffer).unwrap();
+
+        sink.append(source);
+    }
+}
+
+fn play_pause(sink: &Sink, _path: &PathBuf) {
+    match sink.is_paused() {
+        false => {
+            sink.pause();
+        }
+        true => {
+            sink.play();
+        }
+    }
+}
+
+fn skip_forward(sink: &Sink, path: &PathBuf) {
+    sink.stop();
+
+    let file = File::open(path).unwrap();
+    let buffer = BufReader::new(file);
+    let source = Decoder::new(buffer).unwrap();
+
+    sink.append(source);
+}
+
+fn skip_backward(_sink: &Sink) {
+    todo!();
 }
