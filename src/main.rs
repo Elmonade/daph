@@ -4,8 +4,7 @@ use lofty::tag::Accessor;
 use playback::SinkState;
 use ratatui::Frame;
 use ratatui::style::{Color, Modifier, Style, Stylize};
-use ratatui::widgets::{Block, BorderType, Padding, Row, Table, TableState};
-use ratatui::{
+use ratatui::widgets::{Block, BorderType, Padding, Row, Table, TableState}; use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Layout},
     widgets::{Paragraph, Widget},
@@ -13,11 +12,9 @@ use ratatui::{
 
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::read_from_path;
-use rodio::{Decoder, OutputStream, Sink};
+use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::thread;
-use std::time;
 use walkdir::WalkDir;
 mod playback;
 
@@ -51,22 +48,6 @@ impl Default for PlayerState {
             sink_rx,
             number_of_tracks: 0,
             que_len: 0,
-        }
-    }
-}
-
-impl Default for PlayerState {
-    fn default() -> Self {
-        let mut table_state = TableState::default();
-        table_state.select(Some(0)); // Select first row
-
-        Self {
-            musics: Vec::new(),
-            is_searching: false,
-            keyword: String::new(),
-            is_playing: false,
-            current_track_index: 0,
-            table_state,
         }
     }
 }
@@ -107,10 +88,12 @@ fn main() -> Result<()> {
     state.sink_rx = sink_rx;
 
     let _ = load_audio(&mut state);
-    let _ = ratatui::try_restore(); // Exit raw mode
+
     color_eyre::install()?;
     let terminal = ratatui::init();
     let result = run(terminal, &mut state);
+
+    let _ = ratatui::try_restore(); // Exit raw mode
     result
 }
 
