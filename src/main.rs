@@ -1,6 +1,7 @@
 use color_eyre::eyre::{Error, Result};
 use crossterm::event::{self, Event, KeyEvent};
 use lofty::tag::Accessor;
+use playback::SinkState;
 use ratatui::Frame;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::widgets::{Block, BorderType, Padding, Row, Table, TableState};
@@ -14,7 +15,7 @@ use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::read_from_path;
 use std::path::PathBuf;
 use std::result::Result::Ok;
-use std::sync::mpsc::{self, Sender};
+use std::sync::mpsc::{self, Receiver, Sender};
 use walkdir::WalkDir;
 mod playback;
 
@@ -28,11 +29,13 @@ struct PlayerState {
     current_track_index: Option<usize>,
     table_state: TableState,
     tx: Sender<Command>,
+    sink_rx: Receiver<SinkState>,
     number_of_tracks: usize,
 }
 impl Default for PlayerState {
     fn default() -> Self {
-        let (tx, _rx) = mpsc::channel();
+        let (tx, _rx) = mpsc::channel::<Command>();
+        let (_tx, sink_rx) = mpsc::channel::<SinkState>();
 
         PlayerState {
             is_playing: false,
@@ -42,6 +45,7 @@ impl Default for PlayerState {
             is_searching: false,
             keyword: String::new(),
             tx,
+            sink_rx,
             number_of_tracks: 0,
         }
     }
@@ -77,7 +81,9 @@ fn main() -> Result<()> {
     let mut state = PlayerState::default();
     state.table_state.select_first();
     state.table_state.select_first_column();
-    state.tx = playback::setup();
+    let (command_tx, sink_rx) = playback::setup();
+    state.tx = command_tx;
+    state.sink_rx = sink_rx;
 
     let _ = load_audio(&mut state);
 
@@ -128,6 +134,7 @@ fn load_audio(player_state: &mut PlayerState) -> Result<bool, Error> {
 }
 
 fn run(mut terminal: DefaultTerminal, player_state: &mut PlayerState) -> Result<()> {
+    // No delay between poll if we put the sink_receiver here.
     loop {
         //Rendring
         terminal.draw(|f| render(f, player_state))?;
@@ -176,6 +183,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
         event::KeyCode::Esc => return Action::Escape,
         event::KeyCode::Char(char) => match char {
             ' ' => {
+                state.is_playing = !state.is_playing;
                 state
                     .tx
                     .send(Command::PlayPause(PathBuf::new(), 10))
@@ -358,22 +366,49 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
     let table = create_table(musics);
     frame.render_stateful_widget(table, music_list_area, &mut player_state.table_state);
 
-    if player_state.is_playing {
-        // TODO: Only a mother can love type shi code.
-        // It's not much but it's a honest work.
-        // This is about to get even worse. - 06.24.2025
+    let mut index = 0;
+    if let Some(current_index) = player_state.current_track_index {
+        index = current_index;
+    }
 
-        let mut index = 0;
-        if let Some(current_index) = player_state.current_track_index {
-            index = current_index;
-        }
-
+    // TODO: Move receive outside the render loop and add the sleep.
+    // There is no pause between each pull.
+    // But if its inside another thread wouldn't it be bit too much? 
+    // 3 thread for a simple music player is bit...
+    //
+    // There is a massive delay for some reason.
+    if let Ok(sink) = player_state.sink_rx.try_recv() {
         // TODO: Use iterator to replace the clone
         let current_track_name = player_state.musics[index].name.clone();
         let current_track_artist = player_state.musics[index].author.clone();
-        Paragraph::new(format!("{} - {}", current_track_name, current_track_artist))
+        if !sink.is_paused {
+            Paragraph::new(format!(
+                "> \n {} - {}",
+                current_track_name, current_track_artist
+            ))
             .render(player_area, frame.buffer_mut());
+        } else {
+            Paragraph::new(format!(
+                "|| \n {} - {}",
+                current_track_name, current_track_artist
+            ))
+            .render(player_area, frame.buffer_mut());
+        }
     } else {
-        Paragraph::new("No music is currently playing").render(player_area, frame.buffer_mut());
+        let current_track_name = player_state.musics[index].name.clone();
+        let current_track_artist = player_state.musics[index].author.clone();
+        if player_state.is_playing {
+            Paragraph::new(format!(
+                "> \n {} - {}",
+                current_track_name, current_track_artist
+            ))
+            .render(player_area, frame.buffer_mut());
+        } else {
+            Paragraph::new(format!(
+                "|| \n {} - {}",
+                current_track_name, current_track_artist
+            ))
+            .render(player_area, frame.buffer_mut());
+        }
     }
 }

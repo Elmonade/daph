@@ -1,27 +1,44 @@
 use rodio::{Decoder, OutputStream, Sink};
-use std::{fs::File, io::BufReader, path::PathBuf, sync::mpsc, thread};
+use std::{fs::File, io::BufReader, path::PathBuf, sync::mpsc, thread, time};
 
 use crate::Command;
 
-pub fn setup() -> mpsc::Sender<Command> {
-    let (tx, rx) = mpsc::channel::<Command>();
+pub(crate) struct SinkState {
+    pub que_len: usize,
+    pub is_paused: bool,
+    pub is_empty: bool,
+}
+
+pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
+    let (command_tx, command_rx) = mpsc::channel::<Command>();
+    let (state_tx, state_rx) = mpsc::channel::<SinkState>();
 
     let _ = thread::Builder::new()
         .name("playback".to_string())
         .spawn(move || {
             let (_stream, stream_handle) = OutputStream::try_default().unwrap();
             let sink = Sink::try_new(&stream_handle).unwrap();
+
             loop {
-                if let Ok(command) = rx.try_recv() {
+                if let Ok(command) = command_rx.try_recv() {
                     audio_command(command, &sink);
                 }
-                thread::sleep(std::time::Duration::from_millis(100));
+                thread::sleep(time::Duration::from_millis(100));
+
+                //TODO: Not a good idea to recreate this variable every 100ms.
+                let sink_state = SinkState {
+                    que_len: sink.len(),
+                    is_paused: sink.is_paused(),
+                    is_empty: sink.empty(),
+                };
+
+                state_tx.send(sink_state).unwrap_or(());
             }
         });
-    tx
+    (command_tx, state_rx)
 }
 
-pub(crate) fn audio_command(_message: Command, sink: &Sink) {
+fn audio_command(_message: Command, sink: &Sink) {
     match _message {
         Command::PlayPause(path, _) => play_pause(sink, &path),
         Command::Forward(path, _) => skip_forward(sink, &path),
