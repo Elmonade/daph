@@ -23,7 +23,6 @@ pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
                 if let Ok(command) = command_rx.try_recv() {
                     audio_command(command, &sink);
                 }
-                thread::sleep(time::Duration::from_millis(100));
 
                 //TODO: Not a good idea to recreate this variable every 100ms.
                 let sink_state = SinkState {
@@ -33,6 +32,8 @@ pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
                 };
 
                 state_tx.send(sink_state).unwrap_or(());
+
+                thread::sleep(time::Duration::from_millis(100));
             }
         });
     (command_tx, state_rx)
@@ -40,13 +41,26 @@ pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
 
 fn audio_command(_message: Command, sink: &Sink) {
     match _message {
+        Command::Append(path, _) => append(sink, &path),
         Command::PlayPause(path, _) => play_pause(sink, &path),
         Command::Forward(path, _) => skip_forward(sink, &path),
         Command::Backward(_, _) => skip_backward(sink),
         Command::New(path, _) => new_song(sink, &path),
-        Command::Next(_, _) => todo!(),
+        Command::Next(_, _) => next(sink),
         Command::Previous(_, _) => todo!(),
     }
+}
+
+fn next(sink: &Sink) {
+    sink.skip_one();
+}
+
+fn append(sink: &Sink, path: &PathBuf) {
+    let file = File::open(path).unwrap();
+    let buffer = BufReader::new(file);
+    let source = Decoder::new(buffer).unwrap();
+
+    sink.append(source);
 }
 
 fn new_song(sink: &Sink, path: &PathBuf) {

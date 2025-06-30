@@ -16,6 +16,8 @@ use lofty::read_from_path;
 use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::thread;
+use std::time;
 use walkdir::WalkDir;
 mod playback;
 
@@ -31,6 +33,7 @@ struct PlayerState {
     tx: Sender<Command>,
     sink_rx: Receiver<SinkState>,
     number_of_tracks: usize,
+    que_len: usize,
 }
 impl Default for PlayerState {
     fn default() -> Self {
@@ -47,6 +50,7 @@ impl Default for PlayerState {
             tx,
             sink_rx,
             number_of_tracks: 0,
+            que_len: 0,
         }
     }
 }
@@ -74,6 +78,7 @@ enum Command {
     Next(PathBuf, i32),
     Previous(PathBuf, i32),
     New(PathBuf, i32),
+    Append(PathBuf, i32),
 }
 
 fn main() -> Result<()> {
@@ -133,28 +138,80 @@ fn load_audio(player_state: &mut PlayerState) -> Result<bool, Error> {
     Ok(true)
 }
 
-fn run(mut terminal: DefaultTerminal, player_state: &mut PlayerState) -> Result<()> {
-    // No delay between poll if we put the sink_receiver here.
+fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
     loop {
-        //Rendring
-        terminal.draw(|f| render(f, player_state))?;
-        //Input
+        // TODO: Move receive outside the render loop and add the sleep.
+        // There is no pause between each pull.
+        // But if its inside another thread wouldn't it be bit too much?
+        // 3 thread for a simple music player is bit...
+        //
+        // There is a massive delay for some reason.
+        let mut is_empty = false;
+        if let Ok(sink) = state.sink_rx.try_recv() {
+            state.que_len = sink.que_len;
+            is_empty = sink.is_empty;
+        }
+
+        // Rendring
+        terminal.draw(|f| render(f, state))?;
+        // Input
         if let Event::Key(key) = event::read()? {
-            if player_state.is_searching {
-                //TODO: Do we need player_state?
-                match handle_search(key, player_state) {
-                    Action::Submit => player_state.is_searching = false,
-                    Action::Escape => player_state.is_searching = false,
+            if state.is_searching {
+                //TODO: Do we need state?
+                match handle_search(key, state) {
+                    Action::Submit => state.is_searching = false,
+                    Action::Escape => state.is_searching = false,
                     Action::None => {}
                 }
             } else {
-                match handle_button(key, player_state) {
+                match handle_button(key, state) {
                     Action::Escape => break,
                     Action::Submit => {}
                     Action::None => {}
                 }
             }
         }
+        // Shuffle / Repeat
+        if state.que_len < 2 {
+            if let Some(mut index) = state.current_track_index {
+                if index < state.number_of_tracks - 1 {
+                    index += 1;
+                }
+                /*
+                                state.current_track_index = Some(index);
+
+                                state.musics[index - 1].is_playing = false;
+                                state.musics[index].is_playing = true;
+                                state.is_playing = true;
+                */
+
+                let path = state.musics[index].path.clone();
+                //state.tx.send(Command::New(path, 10)).unwrap_or(());
+                state.tx.send(Command::Append(path, 10)).unwrap_or(());
+            }
+
+            thread::sleep(time::Duration::from_millis(100));
+        }
+
+        /*
+                if is_empty {
+                    if let Some(mut index) = state.current_track_index {
+                        if index < state.number_of_tracks - 1 {
+                            index += 1;
+                        }
+                        state.current_track_index = Some(index);
+
+                        state.musics[index - 1].is_playing = false;
+                        state.musics[index].is_playing = true;
+                        state.is_playing = true;
+
+                        let path = state.musics[index].path.clone();
+                        state.tx.send(Command::New(path, 10)).unwrap_or(());
+                    }
+
+                    thread::sleep(time::Duration::from_millis(100));
+                }
+        */
     }
     Ok(())
 }
@@ -371,44 +428,20 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
         index = current_index;
     }
 
-    // TODO: Move receive outside the render loop and add the sleep.
-    // There is no pause between each pull.
-    // But if its inside another thread wouldn't it be bit too much? 
-    // 3 thread for a simple music player is bit...
-    //
-    // There is a massive delay for some reason.
-    if let Ok(sink) = player_state.sink_rx.try_recv() {
-        // TODO: Use iterator to replace the clone
-        let current_track_name = player_state.musics[index].name.clone();
-        let current_track_artist = player_state.musics[index].author.clone();
-        if !sink.is_paused {
-            Paragraph::new(format!(
-                "> \n {} - {}",
-                current_track_name, current_track_artist
-            ))
-            .render(player_area, frame.buffer_mut());
-        } else {
-            Paragraph::new(format!(
-                "|| \n {} - {}",
-                current_track_name, current_track_artist
-            ))
-            .render(player_area, frame.buffer_mut());
-        }
+    // TODO: Use iterator to replace the clone
+    let current_track_name = player_state.musics[index].name.clone();
+    let current_track_artist = player_state.musics[index].author.clone();
+    if player_state.is_playing {
+        Paragraph::new(format!(
+            " || \n {} - {}",
+            current_track_name, current_track_artist
+        ))
+        .render(player_area, frame.buffer_mut());
     } else {
-        let current_track_name = player_state.musics[index].name.clone();
-        let current_track_artist = player_state.musics[index].author.clone();
-        if player_state.is_playing {
-            Paragraph::new(format!(
-                "> \n {} - {}",
-                current_track_name, current_track_artist
-            ))
-            .render(player_area, frame.buffer_mut());
-        } else {
-            Paragraph::new(format!(
-                "|| \n {} - {}",
-                current_track_name, current_track_artist
-            ))
-            .render(player_area, frame.buffer_mut());
-        }
+        Paragraph::new(format!(
+            " > \n {} - {}",
+            current_track_name, current_track_artist
+        ))
+        .render(player_area, frame.buffer_mut());
     }
 }
