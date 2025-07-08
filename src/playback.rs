@@ -30,7 +30,7 @@ pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
                 }
 
                 let is_playing = !sink.empty() && !sink.is_paused();
-                if was_playing && !is_playing {
+                if was_playing && sink.empty() {
                     current_track_finished = true;
                 }
 

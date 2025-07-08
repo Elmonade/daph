@@ -172,16 +172,18 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
 
         // Auto-Queue
         if current_track_finished {
-            println!("Track finished. Auto queue.");
             if let Some(mut index) = state.current_track_index {
                 if index < state.number_of_tracks - 1 {
+                    state.musics[index].is_playing = false;
                     index += 1;
+                } else {
+                    state.musics[index].is_playing = false;
+                    index = 0;
                 }
-                state.current_track_index = Some(index);
 
-                state.musics[index - 1].is_playing = false;
                 state.musics[index].is_playing = true;
 
+                state.current_track_index = Some(index);
                 let path = state.musics[index].path.clone();
                 state.tx.send(Command::New(path, 10)).unwrap_or(());
             }
@@ -347,11 +349,7 @@ fn create_table(tracks: &Vec<Audio>) -> Table {
     table
 }
 
-fn render(
-    frame: &mut Frame,
-    player_state: &mut PlayerState,
-    is_playing: bool,
-) {
+fn render(frame: &mut Frame, player_state: &mut PlayerState, is_playing: bool) {
     let [left, right] =
         Layout::horizontal([Constraint::Percentage(75), Constraint::Percentage(25)])
             .margin(0)
