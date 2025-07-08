@@ -173,13 +173,8 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
         // Auto-Queue
         if current_track_finished {
             if let Some(mut index) = state.current_track_index {
-                if index < state.number_of_tracks - 1 {
-                    state.musics[index].is_playing = false;
-                    index += 1;
-                } else {
-                    state.musics[index].is_playing = false;
-                    index = 0;
-                }
+                state.musics[index].is_playing = false;
+                index = (index + 1) % state.number_of_tracks;
 
                 state.musics[index].is_playing = true;
 
