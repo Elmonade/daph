@@ -22,9 +22,9 @@ pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
             let sink = Sink::try_new(&stream_handle).unwrap();
             let mut was_playing = false;
             let mut sink_state;
+            let mut current_track_finished = false;
 
             loop {
-                let mut current_track_finished = false;
                 if let Ok(command) = command_rx.try_recv() {
                     audio_command(command, &sink);
                 }
@@ -32,7 +32,7 @@ pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
                 let is_playing = !sink.empty() && !sink.is_paused();
                 if was_playing && !is_playing {
                     current_track_finished = true;
-                } 
+                }
 
                 sink_state = SinkState {
                     que_len: sink.len(),
@@ -42,10 +42,9 @@ pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
                     current_track_finished,
                 };
 
-                state_tx.send(sink_state).unwrap_or(());
+                state_tx.send(sink_state).unwrap_or(current_track_finished = false);
 
                 was_playing = is_playing;
-
                 thread::sleep(time::Duration::from_millis(100));
             }
         });
