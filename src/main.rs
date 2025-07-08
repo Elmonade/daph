@@ -177,7 +177,6 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
                 index = (index + 1) % state.number_of_tracks;
 
                 state.musics[index].is_playing = true;
-
                 state.current_track_index = Some(index);
                 let path = state.musics[index].path.clone();
                 state.tx.send(Command::New(path, 10)).unwrap_or(());
@@ -266,12 +265,10 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
             // TODO: Should it wrap around?
             '<' => {
                 if let Some(mut index) = state.current_track_index {
-                    if index > 0 {
-                        index -= 1;
-                    }
-                    state.current_track_index = Some(index);
+                    state.musics[index].is_playing = false;
+                    index = (index + state.number_of_tracks - 1) % state.number_of_tracks;
 
-                    state.musics[index + 1].is_playing = false;
+                    state.current_track_index = Some(index);
                     state.musics[index].is_playing = true;
 
                     let path = state.musics[index].path.clone();
@@ -280,14 +277,11 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
             }
             '>' => {
                 if let Some(mut index) = state.current_track_index {
-                    if index < state.number_of_tracks - 1 {
-                        index += 1;
-                    }
-                    state.current_track_index = Some(index);
+                    state.musics[index].is_playing = false;
+                    index = (index + 1) % state.number_of_tracks;
 
-                    state.musics[index - 1].is_playing = false;
                     state.musics[index].is_playing = true;
-
+                    state.current_track_index = Some(index);
                     let path = state.musics[index].path.clone();
                     state.tx.send(Command::New(path, 10)).unwrap_or(());
                 }
