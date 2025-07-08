@@ -4,7 +4,8 @@ use lofty::tag::Accessor;
 use playback::SinkState;
 use ratatui::Frame;
 use ratatui::style::{Color, Modifier, Style, Stylize};
-use ratatui::widgets::{Block, BorderType, Padding, Row, Table, TableState}; use ratatui::{
+use ratatui::widgets::{Block, BorderType, Padding, Row, Table, TableState};
+use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Layout},
     widgets::{Paragraph, Widget},
@@ -17,6 +18,7 @@ use std::result::Result::Ok;
 use std::sync::mpsc::{self, Receiver, Sender};
 use walkdir::WalkDir;
 mod playback;
+mod view;
 
 const PATH: &str = "/home/jello/Media/audio";
 
@@ -24,13 +26,13 @@ struct PlayerState {
     musics: Vec<Audio>,
     is_searching: bool,
     keyword: String,
-    is_playing: bool,
     current_track_index: Option<usize>,
     table_state: TableState,
     tx: Sender<Command>,
     sink_rx: Receiver<SinkState>,
     number_of_tracks: usize,
     que_len: usize,
+    sink_state: Option<SinkState>,
 }
 impl Default for PlayerState {
     fn default() -> Self {
@@ -38,7 +40,7 @@ impl Default for PlayerState {
         let (_tx, sink_rx) = mpsc::channel::<SinkState>();
 
         PlayerState {
-            is_playing: false,
+            sink_state: None,
             current_track_index: None,
             table_state: TableState::default(),
             musics: Vec::new(),
@@ -68,7 +70,7 @@ enum Action {
 }
 
 #[derive(Debug)]
-enum Command {
+pub(crate) enum Command {
     PlayPause(PathBuf, i32),
     Forward(PathBuf, i32),
     Backward(PathBuf, i32),
@@ -136,76 +138,55 @@ fn load_audio(player_state: &mut PlayerState) -> Result<bool, Error> {
 }
 
 fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
+    let mut is_playing = false;
+    let mut current_track_finished = false;
     loop {
-        // TODO: Move receive outside the render loop and add the sleep.
-        // There is no pause between each pull.
-        // But if its inside another thread wouldn't it be bit too much?
-        // 3 thread for a simple music player is bit...
-        //
-        // There is a massive delay for some reason.
-        let mut is_empty = false;
         if let Ok(sink) = state.sink_rx.try_recv() {
             state.que_len = sink.que_len;
-            is_empty = sink.is_empty;
+            is_playing = sink.is_playing;
+            current_track_finished = sink.current_track_finished;
         }
 
-        // Rendring
-        terminal.draw(|f| render(f, state))?;
-        // Input
-        if let Event::Key(key) = event::read()? {
-            if state.is_searching {
-                //TODO: Do we need state?
-                match handle_search(key, state) {
-                    Action::Submit => state.is_searching = false,
-                    Action::Escape => state.is_searching = false,
-                    Action::None => {}
-                }
-            } else {
-                match handle_button(key, state) {
-                    Action::Escape => break,
-                    Action::Submit => {}
-                    Action::None => {}
+        // Render
+        terminal.draw(|f| render(f, state, is_playing))?;
+
+        // Input - Non-blocking poll. Raw Event will block this thread. Wait up to 50msec
+        if event::poll(std::time::Duration::from_millis(50))? {
+            if let Event::Key(key) = event::read()? {
+                if state.is_searching {
+                    //TODO: Do we need state?
+                    match handle_search(key, state) {
+                        Action::Submit => state.is_searching = false,
+                        Action::Escape => state.is_searching = false,
+                        Action::None => {}
+                    }
+                } else {
+                    match handle_button(key, state) {
+                        Action::Escape => break,
+                        Action::Submit => {}
+                        Action::None => {}
+                    }
                 }
             }
         }
-        // Shuffle / Repeat
-        if state.que_len < 2 {
+
+        // Auto-Queue
+        if current_track_finished {
+            println!("Track finished. Auto queue.");
             if let Some(mut index) = state.current_track_index {
                 if index < state.number_of_tracks - 1 {
                     index += 1;
                 }
-                /*
-                                state.current_track_index = Some(index);
+                state.current_track_index = Some(index);
 
-                                state.musics[index - 1].is_playing = false;
-                                state.musics[index].is_playing = true;
-                                state.is_playing = true;
-                */
+                state.musics[index - 1].is_playing = false;
+                state.musics[index].is_playing = true;
 
                 let path = state.musics[index].path.clone();
-                state.tx.send(Command::Append(path, 10)).unwrap_or(());
+                state.tx.send(Command::New(path, 10)).unwrap_or(());
             }
         }
-
-        /*
-                if is_empty {
-                    if let Some(mut index) = state.current_track_index {
-                        if index < state.number_of_tracks - 1 {
-                            index += 1;
-                        }
-                        state.current_track_index = Some(index);
-
-                        state.musics[index - 1].is_playing = false;
-                        state.musics[index].is_playing = true;
-                        state.is_playing = true;
-
-                        let path = state.musics[index].path.clone();
-                        state.tx.send(Command::New(path, 10)).unwrap_or(());
-                    }
-
-                    thread::sleep(time::Duration::from_millis(100));
-                }
-        */
+        std::thread::sleep(std::time::Duration::from_millis(15));
     }
     Ok(())
 }
@@ -234,7 +215,6 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
         event::KeyCode::Esc => return Action::Escape,
         event::KeyCode::Char(char) => match char {
             ' ' => {
-                state.is_playing = !state.is_playing;
                 state
                     .tx
                     .send(Command::PlayPause(PathBuf::new(), 10))
@@ -248,7 +228,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                         if selected_index == current_index {
                             state.musics[selected_index].is_playing =
                                 !state.musics[selected_index].is_playing;
-                            state.is_playing = !state.is_playing;
+
                             state
                                 .tx
                                 .send(Command::PlayPause(PathBuf::new(), 10))
@@ -257,7 +237,6 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                             state.musics[selected_index].is_playing = true;
                             state.musics[current_index].is_playing = false;
                             state.current_track_index = Some(selected_index);
-                            state.is_playing = true;
 
                             let path = state.musics[selected_index].path.clone();
                             state.tx.send(Command::New(path, 10)).unwrap_or(());
@@ -267,7 +246,6 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                         //TODO: Refactor
                         state.musics[selected_index].is_playing = true;
                         state.current_track_index = Some(selected_index);
-                        state.is_playing = true;
 
                         let path = state.musics[selected_index].path.clone();
                         state.tx.send(Command::New(path, 10)).unwrap_or(());
@@ -298,7 +276,6 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
 
                     state.musics[index + 1].is_playing = false;
                     state.musics[index].is_playing = true;
-                    state.is_playing = true;
 
                     let path = state.musics[index].path.clone();
                     state.tx.send(Command::New(path, 10)).unwrap_or(());
@@ -313,7 +290,6 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
 
                     state.musics[index - 1].is_playing = false;
                     state.musics[index].is_playing = true;
-                    state.is_playing = true;
 
                     let path = state.musics[index].path.clone();
                     state.tx.send(Command::New(path, 10)).unwrap_or(());
@@ -371,7 +347,11 @@ fn create_table(tracks: &Vec<Audio>) -> Table {
     table
 }
 
-fn render(frame: &mut Frame, player_state: &mut PlayerState) {
+fn render(
+    frame: &mut Frame,
+    player_state: &mut PlayerState,
+    is_playing: bool,
+) {
     let [left, right] =
         Layout::horizontal([Constraint::Percentage(75), Constraint::Percentage(25)])
             .margin(0)
@@ -425,7 +405,8 @@ fn render(frame: &mut Frame, player_state: &mut PlayerState) {
     // TODO: Use iterator to replace the clone
     let current_track_name = player_state.musics[index].name.clone();
     let current_track_artist = player_state.musics[index].author.clone();
-    if player_state.is_playing {
+
+    if is_playing {
         Paragraph::new(format!(
             " || \n {} - {}",
             current_track_name, current_track_artist

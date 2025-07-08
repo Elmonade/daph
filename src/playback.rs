@@ -5,8 +5,10 @@ use crate::Command;
 
 pub(crate) struct SinkState {
     pub que_len: usize,
-    pub is_paused: bool,
-    pub is_empty: bool,
+    pub _is_paused: bool,
+    pub _is_empty: bool,
+    pub is_playing: bool,
+    pub current_track_finished: bool,
 }
 
 pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
@@ -18,20 +20,31 @@ pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
         .spawn(move || {
             let (_stream, stream_handle) = OutputStream::try_default().unwrap();
             let sink = Sink::try_new(&stream_handle).unwrap();
+            let mut was_playing = false;
+            let mut sink_state;
 
             loop {
+                let mut current_track_finished = false;
                 if let Ok(command) = command_rx.try_recv() {
                     audio_command(command, &sink);
                 }
 
-                //TODO: Not a good idea to recreate this variable every 100ms.
-                let sink_state = SinkState {
+                let is_playing = !sink.empty() && !sink.is_paused();
+                if was_playing && !is_playing {
+                    current_track_finished = true;
+                } 
+
+                sink_state = SinkState {
                     que_len: sink.len(),
-                    is_paused: sink.is_paused(),
-                    is_empty: sink.empty(),
+                    _is_paused: sink.is_paused(),
+                    _is_empty: sink.empty(),
+                    is_playing,
+                    current_track_finished,
                 };
 
                 state_tx.send(sink_state).unwrap_or(());
+
+                was_playing = is_playing;
 
                 thread::sleep(time::Duration::from_millis(100));
             }
