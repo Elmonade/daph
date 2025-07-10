@@ -119,8 +119,8 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
                 if state.is_searching {
                     //TODO: Do we need state?
                     match handle_search(key, state) {
-                        Action::Submit => state.is_searching = false,
                         Action::Escape => state.is_searching = false,
+                        Action::Submit => {}
                         Action::None => {}
                     }
                 } else {

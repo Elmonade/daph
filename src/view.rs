@@ -11,17 +11,17 @@ use ratatui::{
 };
 
 pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, position: Duration) {
-    let [left, right] =
-        Layout::horizontal([Constraint::Percentage(75), Constraint::Percentage(25)])
+    let [mut left, mut right] =
+        Layout::horizontal([Constraint::Percentage(100), Constraint::Percentage(0)])
             .margin(0)
             .areas(frame.area());
-    let [left_top, left_bottom] =
-        Layout::vertical([Constraint::Percentage(90), Constraint::Percentage(10)])
-            .margin(0)
-            .areas(left);
 
     if state.is_searching {
-        //TODO: Dynamic Scaling OR Make it toggleable
+        [left, right] =
+            Layout::horizontal([Constraint::Percentage(75), Constraint::Percentage(25)])
+                .margin(0)
+                .areas(frame.area());
+
         Paragraph::new(state.keyword.as_str())
             .block(
                 Block::bordered()
@@ -31,7 +31,12 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, p
                     .title("SEARCH"),
             )
             .render(right, frame.buffer_mut());
-    }
+    } 
+
+    let [left_top, left_bottom] =
+        Layout::vertical([Constraint::Percentage(85), Constraint::Percentage(15)])
+            .margin(0)
+            .areas(left);
 
     let [music_list_area] = Layout::vertical([Constraint::Fill(1)])
         .margin(1)
@@ -39,6 +44,11 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, p
     let [player_area] = Layout::horizontal([Constraint::Fill(1)])
         .margin(1)
         .areas(left_bottom);
+
+    let [progress_bar] = Layout::horizontal([Constraint::Fill(1)])
+        .margin(1)
+        .flex(ratatui::layout::Flex::Center)
+        .areas(player_area);
 
     let left_top_block = Block::bordered()
         .title("LIBRARY")
@@ -70,16 +80,22 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, p
 
     if is_playing {
         Paragraph::new(format!(
-            " || \n {} - {} \n Time: {} / {}",
-            current_track_name, current_track_artist, position.as_secs(), duration
-        ))
-        .render(player_area, frame.buffer_mut());
+            "{} - {} \n ⏸️ \n{} / {}",
+            current_track_name,
+            current_track_artist,
+            duration,
+            position.as_secs()
+        )).alignment(ratatui::layout::Alignment::Center)
+        .render(progress_bar, frame.buffer_mut());
     } else {
         Paragraph::new(format!(
-            " > \n {} - {} \n Time: {} / {}",
-            current_track_name, current_track_artist, position.as_secs(), duration
-        ))
-        .render(player_area, frame.buffer_mut());
+            "{} - {} \n ▶️ \n{} / {}",
+            current_track_name,
+            current_track_artist,
+            duration,
+            position.as_secs()
+        )).alignment(ratatui::layout::Alignment::Center)
+        .render(progress_bar, frame.buffer_mut());
     }
 }
 
@@ -116,15 +132,14 @@ fn create_table(tracks: &Vec<Audio>) -> Table {
         Constraint::Percentage(20),
     ];
     let table = Table::new(rows, widths)
-        .header(header)
         //.footer(footer.italic())
-        .column_spacing(1)
         //.style(Color::White)
         //.row_highlight_style(Style::new().on_black().bold())
-        .row_highlight_style(Style::new().fg(Color::Green))
         //.column_highlight_style(Color::Gray)
         //.cell_highlight_style(Style::new().reversed().yellow())
+        .header(header)
+        .column_spacing(1)
+        .row_highlight_style(Style::new().fg(Color::Green))
         .highlight_symbol("- ");
     table
 }
-
