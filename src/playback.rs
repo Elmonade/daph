@@ -81,7 +81,6 @@ fn new_song(sink: &Sink, path: &PathBuf) {
         let buffer = BufReader::new(file);
         let source = Decoder::new(buffer).unwrap();
 
-        //TODO: Does queue get full? I assume it's based on RAM.
         sink.append(source);
         sink.skip_one();
         sink.play();
