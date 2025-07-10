@@ -1,21 +1,19 @@
 use color_eyre::eyre::Result;
-use color_eyre::eyre::Error;
 use crossterm::event::{self, Event, KeyEvent};
-use lofty::tag::Accessor;
 use playback::SinkState;
 
 use ratatui::DefaultTerminal;
 use crate::view::render;
+use crate::utility::load_audio;
 
-use lofty::file::{AudioFile, TaggedFileExt};
-use lofty::read_from_path;
 use ratatui::widgets::TableState;
 use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::sync::mpsc::{self, Receiver, Sender};
-use walkdir::WalkDir;
+
 mod playback;
 mod view;
+mod utility;
 
 const PATH: &str = "/home/jello/Media/audio";
 
@@ -35,17 +33,19 @@ impl Default for PlayerState {
     fn default() -> Self {
         let (tx, _rx) = mpsc::channel::<Command>();
         let (_tx, sink_rx) = mpsc::channel::<SinkState>();
+        // TODO: God please stop using raw unwrap. Handle the friggin error.
+        let (musics, number_of_tracks) = load_audio().unwrap();
 
         PlayerState {
             _sink_state: None,
             current_track_index: None,
             table_state: TableState::default(),
-            musics: Vec::new(),
+            musics,
             is_searching: false,
             keyword: String::new(),
             tx,
             sink_rx,
-            number_of_tracks: 0,
+            number_of_tracks,
             que_len: 0,
         }
     }
@@ -86,52 +86,12 @@ fn main() -> Result<()> {
     state.tx = command_tx;
     state.sink_rx = sink_rx;
 
-    let _ = load_audio(&mut state);
-
     color_eyre::install()?;
     let terminal = ratatui::init();
     let result = run(terminal, &mut state);
 
     let _ = ratatui::try_restore(); // Exit raw mode
     result
-}
-
-//TODO: Pushing everything to PlayerState struct is kinda iffy.
-fn load_audio(player_state: &mut PlayerState) -> Result<bool, Error> {
-    for entry in WalkDir::new(PATH) {
-        let entry = entry?;
-        if let Some(extension) = entry.path().extension() {
-            if extension == "mp3" || extension == "flac" || extension == "wav" {
-                player_state.number_of_tracks += 1;
-                let path = entry.path();
-                let tagged_file = match read_from_path(path) {
-                    Ok(it) => it,
-                    Err(_) => todo!(),
-                };
-
-                let tag = match tagged_file.primary_tag() {
-                    Some(primary_tag) => primary_tag,
-                    None => tagged_file.first_tag().expect("ERROR: No tags"),
-                };
-
-                let tag_title = tag.title();
-                let title = String::from(tag_title.as_deref().unwrap_or("None"));
-                let tag_artist = tag.artist();
-                let artist = String::from(tag_artist.as_deref().unwrap_or("None"));
-                let properties = tagged_file.properties();
-                let seconds = properties.duration().as_secs();
-
-                player_state.musics.push(Audio {
-                    is_playing: (false),
-                    name: (title),
-                    author: (artist),
-                    length: seconds,
-                    path: path.to_path_buf(),
-                });
-            }
-        }
-    }
-    Ok(true)
 }
 
 fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
