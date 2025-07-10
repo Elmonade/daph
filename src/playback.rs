@@ -4,7 +4,6 @@ use std::{fs::File, io::BufReader, path::PathBuf, sync::mpsc, thread, time::{sel
 use crate::Command;
 
 pub(crate) struct SinkState {
-    pub que_len: usize,
     pub _is_paused: bool,
     pub _is_empty: bool,
     pub is_playing: bool,
@@ -36,7 +35,6 @@ pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
                 }
 
                 sink_state = SinkState {
-                    que_len: sink.len(),
                     _is_paused: sink.is_paused(),
                     _is_empty: sink.empty(),
                     is_playing,
@@ -55,13 +53,13 @@ pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
 
 fn audio_command(_message: Command, sink: &Sink) {
     match _message {
-        Command::Append(path, _) => append(sink, &path),
-        Command::PlayPause(path, _) => play_pause(sink, &path),
-        Command::Forward(path, _) => skip_forward(sink, &path),
-        Command::Backward(_, _) => skip_backward(sink),
-        Command::New(path, _) => new_song(sink, &path),
-        Command::Next(_, _) => next(sink),
-        Command::Previous(_, _) => todo!(),
+        Command::PlayPause(path) => play_pause(sink, &path),
+        Command::New(path) => new_song(sink, &path),
+        Command::_Next(_, _) => next(sink),
+        Command::_Append(path, _) => append(sink, &path),
+        Command::_Forward(path, _) => skip_forward(sink, &path),
+        Command::_Backward(_, _) => skip_backward(sink),
+        Command::_Previous(_, _) => todo!(),
     }
 }
 

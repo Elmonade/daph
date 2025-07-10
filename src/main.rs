@@ -29,7 +29,6 @@ struct PlayerState {
     tx: Sender<Command>,
     sink_rx: Receiver<SinkState>,
     number_of_tracks: usize,
-    que_len: usize,
     _sink_state: Option<SinkState>,
 }
 impl Default for PlayerState {
@@ -49,7 +48,6 @@ impl Default for PlayerState {
             tx,
             sink_rx,
             number_of_tracks,
-            que_len: 0,
         }
     }
 }
@@ -71,13 +69,13 @@ enum Action {
 
 #[derive(Debug)]
 pub(crate) enum Command {
-    PlayPause(PathBuf, i32),
-    Forward(PathBuf, i32),
-    Backward(PathBuf, i32),
-    Next(PathBuf, i32),
-    Previous(PathBuf, i32),
-    New(PathBuf, i32),
-    Append(PathBuf, i32),
+    PlayPause(PathBuf),
+    New(PathBuf),
+    _Forward(PathBuf, i32),
+    _Backward(PathBuf, i32),
+    _Next(PathBuf, i32),
+    _Previous(PathBuf, i32),
+    _Append(PathBuf, i32),
 }
 
 fn main() -> Result<()> {
@@ -85,6 +83,7 @@ fn main() -> Result<()> {
     let mut state = PlayerState::default();
     state.table_state.select_first();
     state.table_state.select_first_column();
+
     let (command_tx, sink_rx) = playback::setup();
     state.tx = command_tx;
     state.sink_rx = sink_rx;
@@ -93,7 +92,7 @@ fn main() -> Result<()> {
     let terminal = ratatui::init();
     let result = run(terminal, &mut state);
 
-    let _ = ratatui::try_restore(); // Exit raw mode
+    let _ = ratatui::try_restore();
     result
 }
 
@@ -103,7 +102,6 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
     let mut position = Duration::new(0, 0);
     loop {
         if let Ok(sink) = state.sink_rx.try_recv() {
-            state.que_len = sink.que_len;
             is_playing = sink.is_playing;
             current_track_finished = sink.current_track_finished;
             position = sink.position;
@@ -142,7 +140,7 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
                 state.musics[index].is_playing = true;
                 state.current_track_index = Some(index);
                 let path = state.musics[index].path.clone();
-                state.tx.send(Command::New(path, 10)).unwrap_or(());
+                state.tx.send(Command::New(path)).unwrap_or(());
             }
         }
         std::thread::sleep(std::time::Duration::from_millis(15));
@@ -176,7 +174,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
             ' ' => {
                 state
                     .tx
-                    .send(Command::PlayPause(PathBuf::new(), 10))
+                    .send(Command::PlayPause(PathBuf::new()))
                     .unwrap_or(());
             }
             'p' => {
@@ -190,7 +188,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
 
                             state
                                 .tx
-                                .send(Command::PlayPause(PathBuf::new(), 10))
+                                .send(Command::PlayPause(PathBuf::new()))
                                 .unwrap_or(());
                         } else {
                             state.musics[selected_index].is_playing = true;
@@ -198,7 +196,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                             state.current_track_index = Some(selected_index);
 
                             let path = state.musics[selected_index].path.clone();
-                            state.tx.send(Command::New(path, 10)).unwrap_or(());
+                            state.tx.send(Command::New(path)).unwrap_or(());
                         }
                     }
                     None => {
@@ -207,7 +205,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                         state.current_track_index = Some(selected_index);
 
                         let path = state.musics[selected_index].path.clone();
-                        state.tx.send(Command::New(path, 10)).unwrap_or(());
+                        state.tx.send(Command::New(path)).unwrap_or(());
                     }
                 }
             }
@@ -234,7 +232,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                     state.musics[index].is_playing = true;
 
                     let path = state.musics[index].path.clone();
-                    state.tx.send(Command::New(path, 10)).unwrap_or(());
+                    state.tx.send(Command::New(path)).unwrap_or(());
                 }
             }
             '>' => {
@@ -245,7 +243,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                     state.musics[index].is_playing = true;
                     state.current_track_index = Some(index);
                     let path = state.musics[index].path.clone();
-                    state.tx.send(Command::New(path, 10)).unwrap_or(());
+                    state.tx.send(Command::New(path)).unwrap_or(());
                 }
             }
             _ => {}

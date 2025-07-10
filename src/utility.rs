@@ -25,7 +25,11 @@ pub(crate) fn load_audio() -> Result<(Vec<Audio>, usize), Error> {
 
                 let tag = match tagged_file.primary_tag() {
                     Some(primary_tag) => primary_tag,
-                    None => tagged_file.first_tag().expect("ERROR: No tags"),
+                    //None => tagged_file.first_tag().expect("ERROR: No tags"),
+                    None => {
+                        eprint!("\nNo tags: {}", path.display());
+                        continue;
+                    }
                 };
 
                 let tag_title = tag.title();
