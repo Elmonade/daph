@@ -1,14 +1,16 @@
+use std::time::Duration;
+
+use crate::Audio;
+use crate::PlayerState;
 use ratatui::Frame;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::widgets::{Block, BorderType, Padding};
 use ratatui::{
     layout::{Constraint, Layout},
-    widgets::{Paragraph, Widget, Row, Table},
+    widgets::{Paragraph, Row, Table, Widget},
 };
-use crate::PlayerState;
-use crate::Audio;
 
-pub(crate) fn render(frame: &mut Frame, player_state: & PlayerState, is_playing: bool) {
+pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, position: Duration) {
     let [left, right] =
         Layout::horizontal([Constraint::Percentage(75), Constraint::Percentage(25)])
             .margin(0)
@@ -18,9 +20,9 @@ pub(crate) fn render(frame: &mut Frame, player_state: & PlayerState, is_playing:
             .margin(0)
             .areas(left);
 
-    if player_state.is_searching {
+    if state.is_searching {
         //TODO: Dynamic Scaling OR Make it toggleable
-        Paragraph::new(player_state.keyword.as_str())
+        Paragraph::new(state.keyword.as_str())
             .block(
                 Block::bordered()
                     .fg(Color::Green)
@@ -50,31 +52,32 @@ pub(crate) fn render(frame: &mut Frame, player_state: & PlayerState, is_playing:
 
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
-    let musics = &player_state.musics;
+    let musics = &state.musics;
     let table = create_table(musics);
     // TODO: Find more efficient way than cloning.
-    let mut table_state = player_state.table_state.clone();
+    let mut table_state = state.table_state.clone();
     frame.render_stateful_widget(table, music_list_area, &mut table_state);
 
     let mut index = 0;
-    if let Some(current_index) = player_state.current_track_index {
+    if let Some(current_index) = state.current_track_index {
         index = current_index;
     }
 
     // TODO: Use iterator to replace the clone
-    let current_track_name = player_state.musics[index].name.clone();
-    let current_track_artist = player_state.musics[index].author.clone();
+    let current_track_name = state.musics[index].name.clone();
+    let current_track_artist = state.musics[index].author.clone();
+    let duration = state.musics[index].length.clone();
 
     if is_playing {
         Paragraph::new(format!(
-            " || \n {} - {}",
-            current_track_name, current_track_artist
+            " || \n {} - {} \n Time: {} / {}",
+            current_track_name, current_track_artist, position.as_secs(), duration
         ))
         .render(player_area, frame.buffer_mut());
     } else {
         Paragraph::new(format!(
-            " > \n {} - {}",
-            current_track_name, current_track_artist
+            " > \n {} - {} \n Time: {} / {}",
+            current_track_name, current_track_artist, position.as_secs(), duration
         ))
         .render(player_area, frame.buffer_mut());
     }

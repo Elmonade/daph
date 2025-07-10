@@ -1,5 +1,5 @@
 use rodio::{Decoder, OutputStream, Sink};
-use std::{fs::File, io::BufReader, path::PathBuf, sync::mpsc, thread, time};
+use std::{fs::File, io::BufReader, path::PathBuf, sync::mpsc, thread, time::{self, Duration}};
 
 use crate::Command;
 
@@ -9,6 +9,7 @@ pub(crate) struct SinkState {
     pub _is_empty: bool,
     pub is_playing: bool,
     pub current_track_finished: bool,
+    pub position: Duration,
 }
 
 pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
@@ -40,6 +41,7 @@ pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
                     _is_empty: sink.empty(),
                     is_playing,
                     current_track_finished,
+                    position: sink.get_pos(),
                 };
 
                 state_tx.send(sink_state).unwrap_or(current_track_finished = false);

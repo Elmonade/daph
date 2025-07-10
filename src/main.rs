@@ -1,19 +1,22 @@
-use color_eyre::eyre::Result;
-use crossterm::event::{self, Event, KeyEvent};
-use playback::SinkState;
 
-use ratatui::DefaultTerminal;
-use crate::view::render;
-use crate::utility::load_audio;
-
-use ratatui::widgets::TableState;
 use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::time::Duration;
+
+use ratatui::DefaultTerminal;
+use ratatui::widgets::TableState;
+
+use color_eyre::eyre::Result;
+use crossterm::event::{self, Event, KeyEvent};
+
+use playback::SinkState;
+use crate::utility::load_audio;
+use crate::view::render;
 
 mod playback;
-mod view;
 mod utility;
+mod view;
 
 const PATH: &str = "/home/jello/Media/audio";
 
@@ -97,15 +100,17 @@ fn main() -> Result<()> {
 fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
     let mut is_playing = false;
     let mut current_track_finished = false;
+    let mut position = Duration::new(0, 0);
     loop {
         if let Ok(sink) = state.sink_rx.try_recv() {
             state.que_len = sink.que_len;
             is_playing = sink.is_playing;
             current_track_finished = sink.current_track_finished;
+            position = sink.position;
         }
 
         // Render
-        terminal.draw(|f| render(f, state, is_playing))?;
+        terminal.draw(|f| render(f, state, is_playing, position))?;
 
         // Input - Non-blocking poll. Raw Event will block this thread.
         // Wait up to 50 ms.
