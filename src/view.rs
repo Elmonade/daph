@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use crate::Audio;
 use crate::PlayerState;
+use ratatui::widgets::LineGauge;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
@@ -10,7 +11,6 @@ use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::Line;
 use ratatui::text::Span;
 use ratatui::widgets::Borders;
-use ratatui::widgets::Gauge;
 use ratatui::widgets::{Block, BorderType, Padding};
 use ratatui::{
     layout::{Constraint, Layout},
@@ -18,7 +18,7 @@ use ratatui::{
 };
 
 const CUSTOM_LABEL_COLOR: Color = tailwind::SLATE.c200;
-const GAUGE2_COLOR: Color = tailwind::GREEN.c800;
+const GAUGE_COLOR: Color = tailwind::GREEN.c800;
 
 pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, position: Duration) {
     let [mut left, mut right] =
@@ -89,19 +89,13 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, p
     let duration = state.musics[index].length.clone();
 
     if is_playing {
-        let title = format!("{current_track_name} - {current_track_artist}");
+        let title = format!("⏸️ {current_track_name} - {current_track_artist}");
         let title = title_block(&title);
         render_progress(&position, progress_bar, frame.buffer_mut(), title, duration);
     } else {
-        Paragraph::new(format!(
-            "{} - {} \n ▶️ \n{} / {}",
-            current_track_name,
-            current_track_artist,
-            duration,
-            position.as_secs()
-        ))
-        .alignment(ratatui::layout::Alignment::Center)
-        .render(progress_bar, frame.buffer_mut());
+        let title = format!("▶️ {current_track_name} - {current_track_artist}");
+        let title = title_block(&title);
+        render_progress(&position, progress_bar, frame.buffer_mut(), title, duration);
     }
 }
 
@@ -110,9 +104,9 @@ fn render_progress(progress: &Duration, area: Rect, buf: &mut Buffer, title: Blo
         format!("{}/{}", progress.as_secs(), duration),
         Style::new().italic().bold().fg(CUSTOM_LABEL_COLOR),
     );
-    Gauge::default()
+    LineGauge::default()
         .block(title)
-        .gauge_style(GAUGE2_COLOR)
+        .filled_style(GAUGE_COLOR)
         .ratio(progress.as_secs() as f64 / duration as f64)
         .label(label)
         .render(area, buf);
