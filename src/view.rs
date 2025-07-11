@@ -3,12 +3,22 @@ use std::time::Duration;
 use crate::Audio;
 use crate::PlayerState;
 use ratatui::Frame;
+use ratatui::buffer::Buffer;
+use ratatui::layout::Rect;
+use ratatui::style::palette::tailwind;
 use ratatui::style::{Color, Modifier, Style, Stylize};
+use ratatui::text::Line;
+use ratatui::text::Span;
+use ratatui::widgets::Borders;
+use ratatui::widgets::Gauge;
 use ratatui::widgets::{Block, BorderType, Padding};
 use ratatui::{
     layout::{Constraint, Layout},
     widgets::{Paragraph, Row, Table, Widget},
 };
+
+const CUSTOM_LABEL_COLOR: Color = tailwind::SLATE.c200;
+const GAUGE2_COLOR: Color = tailwind::GREEN.c800;
 
 pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, position: Duration) {
     let [mut left, mut right] =
@@ -31,7 +41,7 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, p
                     .title("SEARCH"),
             )
             .render(right, frame.buffer_mut());
-    } 
+    }
 
     let [left_top, left_bottom] =
         Layout::vertical([Constraint::Percentage(85), Constraint::Percentage(15)])
@@ -79,14 +89,9 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, p
     let duration = state.musics[index].length.clone();
 
     if is_playing {
-        Paragraph::new(format!(
-            "{} - {} \n ⏸️ \n{} / {}",
-            current_track_name,
-            current_track_artist,
-            duration,
-            position.as_secs()
-        )).alignment(ratatui::layout::Alignment::Center)
-        .render(progress_bar, frame.buffer_mut());
+        let title = format!("{current_track_name} - {current_track_artist}");
+        let title = title_block(&title);
+        render_progress(&position, progress_bar, frame.buffer_mut(), title, duration);
     } else {
         Paragraph::new(format!(
             "{} - {} \n ▶️ \n{} / {}",
@@ -94,9 +99,32 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, p
             current_track_artist,
             duration,
             position.as_secs()
-        )).alignment(ratatui::layout::Alignment::Center)
+        ))
+        .alignment(ratatui::layout::Alignment::Center)
         .render(progress_bar, frame.buffer_mut());
     }
+}
+
+fn render_progress(progress: &Duration, area: Rect, buf: &mut Buffer, title: Block, duration: u64) {
+    let label = Span::styled(
+        format!("{}/{}", progress.as_secs(), duration),
+        Style::new().italic().bold().fg(CUSTOM_LABEL_COLOR),
+    );
+    Gauge::default()
+        .block(title)
+        .gauge_style(GAUGE2_COLOR)
+        .ratio(progress.as_secs() as f64 / duration as f64)
+        .label(label)
+        .render(area, buf);
+}
+
+fn title_block(title: &str) -> Block {
+    let title = Line::from(title).centered();
+    Block::new()
+        .borders(Borders::NONE)
+        .padding(Padding::vertical(1))
+        .title(title)
+        .fg(CUSTOM_LABEL_COLOR)
 }
 
 fn create_table(tracks: &Vec<Audio>) -> Table {
