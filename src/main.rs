@@ -20,7 +20,7 @@ mod utility;
 mod view;
 
 const PATH: &str = "/home/jello/Media/audio";
-const SEEK_DISTANCE: usize = 10;
+const SEEK_DISTANCE: usize = 5;
 
 struct PlayerState {
     musics: Vec<Audio>,
@@ -253,12 +253,22 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                 }
             }
             '<' => {
-                state.tx.send(Command::Backward(SEEK_DISTANCE)).unwrap_or(());
+                state
+                    .tx
+                    .send(Command::Backward(SEEK_DISTANCE))
+                    .unwrap_or(());
             }
             '>' => {
-                // TODO: Hope there will always be a index. Otherwise it's cooked.
-                let length = state.musics[state.current_track_index.unwrap()].length;
-                state.tx.send(Command::Forward(SEEK_DISTANCE, length as usize)).unwrap_or(());
+                match state.current_track_index {
+                    Some(index) => {
+                        let length = state.musics[index].length;
+                        state
+                            .tx
+                            .send(Command::Forward(SEEK_DISTANCE, length as usize))
+                            .unwrap_or(());
+                    }
+                    _ => (),
+                }
             }
             _ => {}
         },
