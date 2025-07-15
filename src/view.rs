@@ -84,16 +84,16 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, p
     }
 
     // TODO: Use iterator to replace the clone
-    let current_track_name = state.musics[index].name.clone();
-    let current_track_artist = state.musics[index].author.clone();
+    let track_name = state.musics[index].name.clone();
+    let artist = state.musics[index].author.clone();
     let duration = state.musics[index].length.clone();
 
     if is_playing {
-        let title = format!("⏸️ {current_track_name} - {current_track_artist}");
+        let title = format!("{artist} - {track_name} \n ⏸️");
         let title = title_block(&title);
         render_progress(&position, progress_bar, frame.buffer_mut(), title, duration);
     } else {
-        let title = format!("▶️ {current_track_name} - {current_track_artist}");
+        let title = format!("{artist} - {track_name} \n ▶️");
         let title = title_block(&title);
         render_progress(&position, progress_bar, frame.buffer_mut(), title, duration);
     }

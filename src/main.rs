@@ -13,10 +13,12 @@ use crossterm::event::{self, Event, KeyEvent};
 use playback::SinkState;
 use crate::utility::load_audio;
 use crate::view::render;
+use crate::fuzzy_search::search;
 
 mod playback;
 mod utility;
 mod view;
+mod fuzzy_search;
 
 const PATH: &str = "/home/jello/Media/audio";
 
@@ -30,6 +32,7 @@ struct PlayerState {
     sink_rx: Receiver<SinkState>,
     number_of_tracks: usize,
     _sink_state: Option<SinkState>,
+    matched_tracks: Vec<Audio>,
 }
 impl Default for PlayerState {
     fn default() -> Self {
@@ -43,6 +46,7 @@ impl Default for PlayerState {
             current_track_index: None,
             table_state: TableState::default(),
             musics,
+            matched_tracks: Vec::new(),
             is_searching: false,
             keyword: String::new(),
             tx,
@@ -148,13 +152,15 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
     Ok(())
 }
 
-fn handle_search(key: KeyEvent, player_state: &mut PlayerState) -> Action {
+fn handle_search(key: KeyEvent, state: &mut PlayerState) -> Action {
     match key.code {
         event::KeyCode::Char(c) => {
-            player_state.keyword.push(c);
+            state.keyword.push(c);
+            state.matched_tracks = search(&state.musics, &state.keyword);
         }
         event::KeyCode::Backspace => {
-            player_state.keyword.pop();
+            state.keyword.pop();
+            state.matched_tracks = search(&state.musics, &state.keyword);
         }
         event::KeyCode::Esc => {
             return Action::Escape;
