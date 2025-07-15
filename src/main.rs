@@ -1,4 +1,3 @@
-
 use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -10,17 +9,18 @@ use ratatui::widgets::TableState;
 use color_eyre::eyre::Result;
 use crossterm::event::{self, Event, KeyEvent};
 
-use playback::SinkState;
+use crate::fuzzy_search::search;
 use crate::utility::load_audio;
 use crate::view::render;
-use crate::fuzzy_search::search;
+use playback::SinkState;
 
+mod fuzzy_search;
 mod playback;
 mod utility;
 mod view;
-mod fuzzy_search;
 
 const PATH: &str = "/home/jello/Media/audio";
+const SEEK_DISTANCE: usize = 10;
 
 struct PlayerState {
     musics: Vec<Audio>,
@@ -75,8 +75,8 @@ enum Action {
 pub(crate) enum Command {
     PlayPause(PathBuf),
     New(PathBuf),
-    _Forward(PathBuf, i32),
-    _Backward(PathBuf, i32),
+    Forward(usize, usize),
+    Backward(usize),
     _Next(PathBuf, i32),
     _Previous(PathBuf, i32),
     _Append(PathBuf, i32),
@@ -183,7 +183,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                     .send(Command::PlayPause(PathBuf::new()))
                     .unwrap_or(());
             }
-            'p' => {
+            'l' => {
                 // TODO: Use of unwrap is discouraged. Handle the possible error.
                 let selected_index = state.table_state.selected().unwrap();
                 match state.current_track_index {
@@ -229,7 +229,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
             'k' => {
                 state.table_state.select_previous();
             }
-            '<' => {
+            'p' => {
                 if let Some(mut index) = state.current_track_index {
                     state.musics[index].is_playing = false;
                     index = (index + state.number_of_tracks - 1) % state.number_of_tracks;
@@ -241,7 +241,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                     state.tx.send(Command::New(path)).unwrap_or(());
                 }
             }
-            '>' => {
+            'n' => {
                 if let Some(mut index) = state.current_track_index {
                     state.musics[index].is_playing = false;
                     index = (index + 1) % state.number_of_tracks;
@@ -251,6 +251,14 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                     let path = state.musics[index].path.clone();
                     state.tx.send(Command::New(path)).unwrap_or(());
                 }
+            }
+            '<' => {
+                state.tx.send(Command::Backward(SEEK_DISTANCE)).unwrap_or(());
+            }
+            '>' => {
+                // TODO: Hope there will always be a index. Otherwise it's cooked.
+                let length = state.musics[state.current_track_index.unwrap()].length;
+                state.tx.send(Command::Forward(SEEK_DISTANCE, length as usize)).unwrap_or(());
             }
             _ => {}
         },

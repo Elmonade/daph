@@ -1,5 +1,12 @@
 use rodio::{Decoder, OutputStream, Sink};
-use std::{fs::File, io::BufReader, path::PathBuf, sync::mpsc, thread, time::{self, Duration}};
+use std::{
+    fs::File,
+    io::BufReader,
+    path::PathBuf,
+    sync::mpsc,
+    thread,
+    time::{self, Duration},
+};
 
 use crate::Command;
 
@@ -42,7 +49,9 @@ pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
                     position: sink.get_pos(),
                 };
 
-                state_tx.send(sink_state).unwrap_or(current_track_finished = false);
+                state_tx
+                    .send(sink_state)
+                    .unwrap_or(current_track_finished = false);
 
                 was_playing = is_playing;
                 thread::sleep(time::Duration::from_millis(100));
@@ -56,10 +65,10 @@ fn audio_command(_message: Command, sink: &Sink) {
         Command::PlayPause(path) => play_pause(sink, &path),
         Command::New(path) => new_song(sink, &path),
         Command::_Next(_, _) => next(sink),
-        Command::_Append(path, _) => append(sink, &path),
-        Command::_Forward(path, _) => skip_forward(sink, &path),
-        Command::_Backward(_, _) => skip_backward(sink),
         Command::_Previous(_, _) => todo!(),
+        Command::_Append(path, _) => append(sink, &path),
+        Command::Forward(distance, length) => skip_forward(sink, distance, length),
+        Command::Backward(distance) => skip_backward(sink, distance),
     }
 }
 
@@ -105,16 +114,24 @@ fn play_pause(sink: &Sink, _path: &PathBuf) {
     }
 }
 
-fn skip_forward(sink: &Sink, path: &PathBuf) {
-    sink.stop();
-
-    let file = File::open(path).unwrap();
-    let buffer = BufReader::new(file);
-    let source = Decoder::new(buffer).unwrap();
-
-    sink.append(source);
+fn skip_forward(sink: &Sink, distance: usize, length: usize) {
+    let position = sink.get_pos();
+    match (position.as_secs() + distance as u64) < length as u64 {
+        true => {
+            let seek_to = sink.get_pos() + Duration::new(distance as u64, 0);
+            sink.try_seek(seek_to);
+        }
+        false => (),
+    }
 }
 
-fn skip_backward(_sink: &Sink) {
-    todo!();
+fn skip_backward(sink: &Sink, distance: usize) {
+    let position = sink.get_pos();
+    if position.as_secs() > 10 {
+        let seek_to = position - Duration::new(distance as u64, 0);
+        sink.try_seek(seek_to);
+        return;
+    }
+
+    sink.try_seek(Duration::ZERO);
 }
