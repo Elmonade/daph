@@ -2,7 +2,6 @@ use std::time::Duration;
 
 use crate::Audio;
 use crate::PlayerState;
-use ratatui::widgets::LineGauge;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
@@ -11,6 +10,7 @@ use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::Line;
 use ratatui::text::Span;
 use ratatui::widgets::Borders;
+use ratatui::widgets::LineGauge;
 use ratatui::widgets::{Block, BorderType, Padding};
 use ratatui::{
     layout::{Constraint, Layout},
@@ -83,19 +83,17 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, p
         index = current_index;
     }
 
-    // TODO: Use iterator to replace the clone
-    let track_name = state.musics[index].name.clone();
-    let artist = state.musics[index].author.clone();
-    let duration = state.musics[index].length.clone();
-
-    if is_playing {
-        let title = format!("{artist} - {track_name} \n ⏸️");
+    if let Some(music) = state.musics.get(index) {
+        let icon = if is_playing { "⏸️" } else { "▶️" };
+        let title = format!("{} - {} \n {}", music.author, music.name, icon);
         let title = title_block(&title);
-        render_progress(&position, progress_bar, frame.buffer_mut(), title, duration);
-    } else {
-        let title = format!("{artist} - {track_name} \n ▶️");
-        let title = title_block(&title);
-        render_progress(&position, progress_bar, frame.buffer_mut(), title, duration);
+        render_progress(
+            &position,
+            progress_bar,
+            frame.buffer_mut(),
+            title,
+            music.length,
+        );
     }
 }
 
