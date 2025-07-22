@@ -1,7 +1,9 @@
 use std::path::PathBuf;
+use std::process::exit;
 use std::result::Result::Ok;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Duration;
+use std::usize;
 
 use ratatui::DefaultTerminal;
 use ratatui::widgets::TableState;
@@ -35,6 +37,7 @@ struct PlayerState {
     number_of_tracks: usize,
     _sink_state: Option<SinkState>,
     matched_tracks: Vec<Audio>,
+    iteration_count: usize,
 }
 impl Default for PlayerState {
     fn default() -> Self {
@@ -55,6 +58,7 @@ impl Default for PlayerState {
             tx,
             sink_rx,
             number_of_tracks,
+            iteration_count: 0,
         }
     }
 }
@@ -153,7 +157,12 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
             }
         }
         std::thread::sleep(std::time::Duration::from_millis(15));
-        //state.is_adjusting = false;
+
+        state.iteration_count += 1;
+        if state.iteration_count % 20 == 0 {
+            state.is_adjusting = false;
+            state.iteration_count = 0;
+        }
     }
     Ok(())
 }
@@ -190,34 +199,39 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                     .unwrap_or(());
             }
             ':' => {
-                // TODO: Use of unwrap is discouraged. Handle the possible error.
-                let selected_index = state.table_state.selected().unwrap();
-                match state.current_track_index {
-                    Some(current_index) => {
-                        if selected_index == current_index {
-                            state.musics[selected_index].is_playing =
-                                !state.musics[selected_index].is_playing;
+                // TODO: Hold down at the end of list and press play immediatly.
+                // Why it has a massive delay?
+                if let Some(selected_index) = state.table_state.selected() {
+                    let mut index = selected_index;
+                    if selected_index > state.number_of_tracks {
+                        index = state.number_of_tracks - 1;
+                    }
+                    match state.current_track_index {
+                        Some(current_index) => {
+                            if index == current_index {
+                                state.musics[index].is_playing = !state.musics[index].is_playing;
 
-                            state
-                                .tx
-                                .send(Command::PlayPause(PathBuf::new()))
-                                .unwrap_or(());
-                        } else {
-                            state.musics[selected_index].is_playing = true;
-                            state.musics[current_index].is_playing = false;
-                            state.current_track_index = Some(selected_index);
+                                state
+                                    .tx
+                                    .send(Command::PlayPause(PathBuf::new()))
+                                    .unwrap_or(());
+                            } else {
+                                state.musics[index].is_playing = true;
+                                state.musics[current_index].is_playing = false;
+                                state.current_track_index = Some(index);
 
-                            let path = state.musics[selected_index].path.clone();
+                                let path = state.musics[index].path.clone();
+                                state.tx.send(Command::New(path)).unwrap_or(());
+                            }
+                        }
+                        None => {
+                            //TODO: Refactor - Number of duplication of following steps.
+                            state.musics[index].is_playing = true;
+                            state.current_track_index = Some(index);
+
+                            let path = state.musics[index].path.clone();
                             state.tx.send(Command::New(path)).unwrap_or(());
                         }
-                    }
-                    None => {
-                        //TODO: Refactor - Number of duplication of following steps.
-                        state.musics[selected_index].is_playing = true;
-                        state.current_track_index = Some(selected_index);
-
-                        let path = state.musics[selected_index].path.clone();
-                        state.tx.send(Command::New(path)).unwrap_or(());
                     }
                 }
             }
@@ -230,7 +244,11 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                 }
             }
             'j' => {
-                state.table_state.select_next();
+                if let Some(selected_index) = state.table_state.selected() {
+                    if selected_index < state.number_of_tracks - 1 {
+                        state.table_state.select_next();
+                    }
+                }
             }
             'k' => {
                 state.table_state.select_previous();
@@ -277,17 +295,13 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
             //TODO: Big number takes over the table list.
             'K' => {
                 state.is_adjusting = true;
-                state
-                    .tx
-                    .send(Command::Volume(VOLUME_STEP))
-                    .unwrap_or(());
+                state.iteration_count = 0;
+                state.tx.send(Command::Volume(VOLUME_STEP)).unwrap_or(());
             }
             'J' => {
                 state.is_adjusting = true;
-                state
-                    .tx
-                    .send(Command::Volume(-VOLUME_STEP))
-                    .unwrap_or(());
+                state.iteration_count = 0;
+                state.tx.send(Command::Volume(-VOLUME_STEP)).unwrap_or(());
             }
             _ => {}
         },

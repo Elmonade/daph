@@ -49,6 +49,11 @@ pub(crate) fn render(
             .render(right, frame.buffer_mut());
     }
 
+    let [left_top, left_bottom] =
+        Layout::vertical([Constraint::Percentage(85), Constraint::Percentage(15)])
+            .margin(2)
+            .areas(left);
+
     if state.is_adjusting {
         Paragraph::new(format!("{volume}"))
             .block(
@@ -58,19 +63,15 @@ pub(crate) fn render(
                     .padding(Padding::uniform(1))
                     .title("VOLUME"),
             )
-            .render(left, frame.buffer_mut());
+            .render(left_top, frame.buffer_mut());
     }
-
-    let [left_top, left_bottom] =
-        Layout::vertical([Constraint::Percentage(85), Constraint::Percentage(15)])
-            .margin(0)
-            .areas(left);
 
     let [music_list_area] = Layout::vertical([Constraint::Fill(1)])
         .margin(1)
         .areas(left_top);
-    let [player_area] = Layout::horizontal([Constraint::Fill(1)])
-        .margin(1)
+    let [player_area] = Layout::horizontal([Constraint::Percentage(80)])
+        .flex(ratatui::layout::Flex::Center)
+        .margin(0)
         .areas(left_bottom);
 
     let [progress_bar] = Layout::horizontal([Constraint::Fill(1)])
@@ -83,10 +84,7 @@ pub(crate) fn render(
         .border_type(BorderType::Rounded)
         .fg(Color::Yellow);
 
-    let left_bottom_block = Block::bordered()
-        .title("PLAYER")
-        .border_type(BorderType::Rounded)
-        .fg(Color::Yellow);
+    let left_bottom_block = Block::default().fg(Color::Yellow);
 
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
@@ -102,8 +100,8 @@ pub(crate) fn render(
     }
 
     if let Some(music) = state.musics.get(index) {
-        let icon = if is_playing { "⏸️" } else { "▶️" };
-        let title = format!("{} - {} \n {}", music.author, music.name, icon);
+        let icon = if is_playing { "||" } else { " >" };
+        let title = format!("{icon} \n {} \t {}", music.author, music.name);
         let title = title_block(&title);
         render_progress(
             &position,
@@ -121,7 +119,6 @@ fn render_progress(progress: &Duration, area: Rect, buf: &mut Buffer, title: Blo
         Style::new().italic().bold().fg(CUSTOM_LABEL_COLOR),
     );
 
-    //TODO: Why Gauge is asking for f64, we don't need this much precision?
     let progress = progress.as_secs_f64();
     let ratio = ((progress / duration) * 100.0).round() / 100.0;
     if ratio > 1.0 {
@@ -186,6 +183,6 @@ fn create_table(tracks: &Vec<Audio>) -> Table {
         .header(header)
         .column_spacing(1)
         .row_highlight_style(Style::new().fg(Color::Green))
-        .highlight_symbol("- ");
+        .highlight_symbol("  -  ");
     table
 }
