@@ -9,9 +9,10 @@ pub(crate) fn search(tracks: &Vec<Audio>, keyword: &str) -> Vec<Audio> {
         if track.name.contains(keyword) || track.author.contains(keyword) {
             println!("it does!");
             // Add match to vector
-            vec.push(track);
+            matches.push(track.clone());
         }
     }
+    matches
 }
 
 #[cfg(test)]

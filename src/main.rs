@@ -63,7 +63,9 @@ impl Default for PlayerState {
     }
 }
 
-#[derive(Debug)]
+// Added ', Clone' so we can copy Audio struct
+// inside fyzzy_search (or some shit...)
+#[derive(Debug, Clone)]
 struct Audio {
     is_playing: bool,
     name: String,
