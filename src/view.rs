@@ -110,20 +110,28 @@ pub(crate) fn render(
             progress_bar,
             frame.buffer_mut(),
             title,
-            music.length,
+            music.length as f64,
         );
     }
 }
 
-fn render_progress(progress: &Duration, area: Rect, buf: &mut Buffer, title: Block, duration: u64) {
+fn render_progress(progress: &Duration, area: Rect, buf: &mut Buffer, title: Block, duration: f64) {
     let label = Span::styled(
         format!("{}/{}", progress.as_secs(), duration),
         Style::new().italic().bold().fg(CUSTOM_LABEL_COLOR),
     );
+
+    //TODO: Why Gauge is asking for f64, we don't need this much precision?
+    let progress = progress.as_secs_f64();
+    let ratio = ((progress / duration) * 100.0).round() / 100.0;
+    if ratio > 1.0 {
+        return;
+    }
+
     LineGauge::default()
         .block(title)
         .filled_style(GAUGE_COLOR)
-        .ratio(progress.as_secs() as f64 / duration as f64)
+        .ratio(ratio)
         .label(label)
         .render(area, buf);
 }
