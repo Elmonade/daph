@@ -20,7 +20,13 @@ use ratatui::{
 const CUSTOM_LABEL_COLOR: Color = tailwind::SLATE.c200;
 const GAUGE_COLOR: Color = tailwind::GREEN.c800;
 
-pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, position: Duration) {
+pub(crate) fn render(
+    frame: &mut Frame,
+    state: &PlayerState,
+    is_playing: bool,
+    position: Duration,
+    volume: f32,
+) {
     let [mut left, mut right] =
         Layout::horizontal([Constraint::Percentage(100), Constraint::Percentage(0)])
             .margin(0)
@@ -41,6 +47,18 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, p
                     .title("SEARCH"),
             )
             .render(right, frame.buffer_mut());
+    }
+
+    if state.is_adjusting {
+        Paragraph::new(format!("{volume}"))
+            .block(
+                Block::bordered()
+                    .fg(Color::Green)
+                    .border_type(BorderType::Rounded)
+                    .padding(Padding::uniform(1))
+                    .title("VOLUME"),
+            )
+            .render(left, frame.buffer_mut());
     }
 
     let [left_top, left_bottom] =

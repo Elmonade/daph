@@ -13,6 +13,14 @@ fn test_search() {
         path: PathBuf::new(),
     });
 
+    tracks.push(Audio {
+        is_playing: (false),
+        name: (String::from("Commit Ballad")),
+        author: (String::from("toe")),
+        length: 999,
+        path: PathBuf::new(),
+    });
+
     assert_eq!(search(&tracks, &String::from("Hello")).len(), 1);
     assert_eq!(search(&tracks, &String::from("Bye")).len(), 0);
 }

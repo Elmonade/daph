@@ -21,10 +21,12 @@ mod view;
 
 const PATH: &str = "/home/jello/Media/audio";
 const SEEK_DISTANCE: usize = 5;
+const VOLUME_STEP: f32 = 0.1;
 
 struct PlayerState {
     musics: Vec<Audio>,
     is_searching: bool,
+    is_adjusting: bool,
     keyword: String,
     current_track_index: Option<usize>,
     table_state: TableState,
@@ -48,6 +50,7 @@ impl Default for PlayerState {
             musics,
             matched_tracks: Vec::new(),
             is_searching: false,
+            is_adjusting: false,
             keyword: String::new(),
             tx,
             sink_rx,
@@ -77,6 +80,7 @@ pub(crate) enum Command {
     New(PathBuf),
     Forward(usize, usize),
     Backward(usize),
+    Volume(f32),
     _Next(PathBuf, i32),
     _Previous(PathBuf, i32),
     _Append(PathBuf, i32),
@@ -104,22 +108,23 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
     let mut is_playing = false;
     let mut current_track_finished = false;
     let mut position = Duration::new(0, 0);
+    let mut volume = 1.0;
     loop {
         if let Ok(sink) = state.sink_rx.try_recv() {
             is_playing = sink.is_playing;
             current_track_finished = sink.current_track_finished;
             position = sink.position;
+            volume = sink.volume;
         }
 
         // Render
-        terminal.draw(|f| render(f, state, is_playing, position))?;
+        terminal.draw(|f| render(f, state, is_playing, position, volume))?;
 
         // Input - Non-blocking poll. Raw Event will block this thread.
         // Wait up to 50 ms.
         if event::poll(std::time::Duration::from_millis(50))? {
             if let Event::Key(key) = event::read()? {
                 if state.is_searching {
-                    //TODO: Do we need state?
                     match handle_search(key, state) {
                         Action::Escape => state.is_searching = false,
                         Action::Submit => {}
@@ -148,6 +153,7 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
             }
         }
         std::thread::sleep(std::time::Duration::from_millis(15));
+        //state.is_adjusting = false;
     }
     Ok(())
 }
@@ -183,7 +189,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                     .send(Command::PlayPause(PathBuf::new()))
                     .unwrap_or(());
             }
-            'l' => {
+            ':' => {
                 // TODO: Use of unwrap is discouraged. Handle the possible error.
                 let selected_index = state.table_state.selected().unwrap();
                 match state.current_track_index {
@@ -258,17 +264,30 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                     .send(Command::Backward(SEEK_DISTANCE))
                     .unwrap_or(());
             }
-            '>' => {
-                match state.current_track_index {
-                    Some(index) => {
-                        let length = state.musics[index].length;
-                        state
-                            .tx
-                            .send(Command::Forward(SEEK_DISTANCE, length as usize))
-                            .unwrap_or(());
-                    }
-                    _ => (),
+            '>' => match state.current_track_index {
+                Some(index) => {
+                    let length = state.musics[index].length;
+                    state
+                        .tx
+                        .send(Command::Forward(SEEK_DISTANCE, length as usize))
+                        .unwrap_or(());
                 }
+                _ => (),
+            },
+            //TODO: Big number takes over the table list.
+            'K' => {
+                state.is_adjusting = true;
+                state
+                    .tx
+                    .send(Command::Volume(VOLUME_STEP))
+                    .unwrap_or(());
+            }
+            'J' => {
+                state.is_adjusting = true;
+                state
+                    .tx
+                    .send(Command::Volume(-VOLUME_STEP))
+                    .unwrap_or(());
             }
             _ => {}
         },

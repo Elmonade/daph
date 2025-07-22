@@ -16,6 +16,7 @@ pub(crate) struct SinkState {
     pub is_playing: bool,
     pub current_track_finished: bool,
     pub position: Duration,
+    pub volume: f32,
 }
 
 pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
@@ -47,6 +48,7 @@ pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
                     is_playing,
                     current_track_finished,
                     position: sink.get_pos(),
+                    volume: sink.volume(),
                 };
 
                 state_tx
@@ -64,11 +66,21 @@ fn audio_command(_message: Command, sink: &Sink) {
     match _message {
         Command::PlayPause(path) => play_pause(sink, &path),
         Command::New(path) => new_song(sink, &path),
+        Command::Forward(distance, length) => seek_forward(sink, distance, length),
+        Command::Backward(distance) => seek_backward(sink, distance),
         Command::_Next(_, _) => next(sink),
-        Command::_Previous(_, _) => todo!(),
         Command::_Append(path, _) => append(sink, &path),
-        Command::Forward(distance, length) => skip_forward(sink, distance, length),
-        Command::Backward(distance) => skip_backward(sink, distance),
+        Command::_Previous(_, _) => todo!(),
+        Command::Volume(step) => volume_control(sink, step),
+    }
+}
+
+fn volume_control(sink: &Sink, step: f32) {
+    let mut volume = sink.volume();
+    if (step < 0.0 && volume > 0.0) || (step > 0.0 && volume < 2.0) {
+        //TODO: Isn't there a way to just limit the precision?
+        volume = ((volume + step) * 100.0).round() / 100.0;
+        sink.set_volume(volume);
     }
 }
 
@@ -114,24 +126,24 @@ fn play_pause(sink: &Sink, _path: &PathBuf) {
     }
 }
 
-fn skip_forward(sink: &Sink, distance: usize, length: usize) {
+fn seek_forward(sink: &Sink, distance: usize, length: usize) {
     let position = sink.get_pos();
     match (position.as_secs() + distance as u64) < length as u64 {
         true => {
             let seek_to = sink.get_pos() + Duration::new(distance as u64, 0);
-            sink.try_seek(seek_to);
+            _ = sink.try_seek(seek_to);
         }
         false => (),
     }
 }
 
-fn skip_backward(sink: &Sink, distance: usize) {
+fn seek_backward(sink: &Sink, distance: usize) {
     let position = sink.get_pos();
     if position.as_secs() > 10 {
         let seek_to = position - Duration::new(distance as u64, 0);
-        sink.try_seek(seek_to);
+        _ = sink.try_seek(seek_to);
         return;
     }
 
-    sink.try_seek(Duration::ZERO);
+    _ = sink.try_seek(Duration::ZERO);
 }
