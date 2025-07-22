@@ -50,7 +50,7 @@ pub(crate) fn render(
     }
 
     let [left_top, left_bottom] =
-        Layout::vertical([Constraint::Percentage(85), Constraint::Percentage(15)])
+        Layout::vertical([Constraint::Percentage(90), Constraint::Percentage(10)])
             .margin(2)
             .areas(left);
 
@@ -101,7 +101,7 @@ pub(crate) fn render(
 
     if let Some(music) = state.musics.get(index) {
         let icon = if is_playing { "||" } else { " >" };
-        let title = format!("{icon} \n {} \t {}", music.author, music.name);
+        let title = format!("{icon} \n {} : {}", music.author, music.name);
         let title = title_block(&title);
         render_progress(
             &position,

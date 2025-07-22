@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::process::exit;
 use std::result::Result::Ok;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Duration;
@@ -199,8 +198,6 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                     .unwrap_or(());
             }
             ':' => {
-                // TODO: Hold down at the end of list and press play immediatly.
-                // Why it has a massive delay?
                 if let Some(selected_index) = state.table_state.selected() {
                     let mut index = selected_index;
                     if selected_index > state.number_of_tracks {
