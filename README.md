@@ -1,4 +1,5 @@
-<img width="100" height="100" alt="logo" src="https://github.com/user-attachments/assets/7a99012c-2f55-40b3-9019-a53204ba594a" /> # Daph - Terminal Music Player
+<img width="100" height="100" alt="logo" src="https://github.com/user-attachments/assets/7a99012c-2f55-40b3-9019-a53204ba594a" /> 
+# Daph - Terminal Music Player
 
 A simple terminal-based music player for a local audio collection.
 
