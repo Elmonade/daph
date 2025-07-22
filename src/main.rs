@@ -21,7 +21,7 @@ mod playback;
 mod utility;
 mod view;
 
-const PATH: &str = "/home/jello/Media/audio";
+const PATH: &str = "/home/dread/audio";
 const SEEK_DISTANCE: usize = 5;
 const VOLUME_STEP: f32 = 0.1;
 
