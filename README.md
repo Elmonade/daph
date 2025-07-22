@@ -1,4 +1,5 @@
-<img src="logo.png" alt="Logo" width="100" align="center">
+<img width="100" height="100" alt="Logo" src="https://github.com/user-attachments/assets/856625a8-8179-4741-9223-11efb4a46ffd" />
+
 
 # Daph - Terminal Music Player
 
