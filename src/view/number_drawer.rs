@@ -4,28 +4,126 @@ pub struct NumberDrawer;
 
 impl NumberDrawer {
     pub fn draw(number: &str) -> String {
-        let mut big_numbers = String::new();
+        let mut big_numbers: Vec<Vec<String>> = number.chars();
+
         for digit in number.chars() {
             if digit.is_ascii_digit() {
-                big_numbers.push_str(&Self::enlarge(digit));
-                big_numbers.push_str(" ");
+                let big_number = String::from(Self::enlarge(&digit).trim());
+                big_numbers.push_str(&big_number);
             }
         }
         big_numbers
     }
 
-    fn enlarge(digit: char) -> String {
+    fn enlarge(digit: &char) -> String {
         match digit {
-            '0' => String::from("ZERO"),
-            '1' => String::from("ONE"),  
-            '2' => String::from("TWO"),
-            '3' => String::from("THREE"),
-            '4' => String::from("FOUR"),
-            '5' => String::from("FIVE"),
-            '6' => String::from("SIX"),
-            '7' => String::from("SEVEN"),
-            '8' => String::from("EIGHT"),
-            '9' => String::from("NINE"),
+            '0' => String::from(
+                "
+╔═══╗
+║╔═╗║
+║║ ║║
+║║ ║║
+║╚═╝║
+╚═══╝
+",
+            ),
+
+            '1' => String::from(
+                "
+ ╔╗ 
+╔╝║ 
+╚╗║ 
+ ║║ 
+╔╝╚╗
+╚══╝
+",
+            ),
+            '2' => String::from(
+                "
+╔═══╗
+║╔═╗║
+╚╝╔╝║
+╔═╝╔╝
+║║╚═╗
+╚═══╝
+",
+            ),
+            '3' => String::from(
+                "
+╔═══╗
+║╔═╗║
+╚╝╔╝║
+╔╗╚╗║
+║╚═╝║
+╚═══╝
+",
+            ),
+            '4' => String::from(
+                "
+╔╗ ╔╗
+║║ ║║
+║╚═╝║
+╚══╗║
+   ║║
+   ╚╝
+
+",
+            ),
+            '5' => String::from(
+                "
+╔═══╗
+║╔══╝
+║╚══╗
+╚══╗║
+╔══╝║
+╚═══╝
+
+",
+            ),
+            '6' => String::from(
+                "
+╔═══╗
+║╔══╝
+║╚══╗
+║╔═╗║
+║╚═╝║
+╚═══╝
+
+",
+            ),
+            '7' => String::from(
+                "
+╔═══╗
+║╔═╗║
+╚╝╔╝║
+  ║╔╝
+  ║║ 
+  ╚╝ 
+
+",
+            ),
+            '8' => String::from(
+                "
+╔═══╗
+║╔═╗║
+║╚═╝║
+║╔═╗║
+║╚═╝║
+╚═══╝
+
+",
+            ),
+            '9' => String::from(
+                "
+╔═══╗
+║╔═╗║
+║╚═╝║
+╚══╗║
+╔══╝║
+╚═══╝
+
+",
+            ),
             _ => String::from("NONE"),
         }
     }

@@ -2,11 +2,13 @@ use std::time::Duration;
 
 use crate::Audio;
 use crate::PlayerState;
+use color_eyre::owo_colors::OwoColorize;
 use number_drawer::NumberDrawer;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Flex;
 use ratatui::layout::Rect;
+use ratatui::layout::Size;
 use ratatui::layout::{Constraint, Layout};
 use ratatui::style::palette::tailwind;
 use ratatui::style::{Color, Modifier, Style, Stylize};
@@ -64,10 +66,14 @@ pub(crate) fn render(
     let [music_list_area] = Layout::vertical([Constraint::Fill(1)])
         .margin(1)
         .areas(left_top);
-    let [player_area] = Layout::horizontal([Constraint::Percentage(80)])
-        .flex(ratatui::layout::Flex::Center)
-        .margin(0)
-        .areas(left_bottom);
+    let [player_area_left, player_area, player_area_right] = Layout::horizontal([
+        Constraint::Percentage(10),
+        Constraint::Percentage(80),
+        Constraint::Percentage(10),
+    ])
+    .flex(ratatui::layout::Flex::Center)
+    .margin(0)
+    .areas(left_bottom);
 
     let [progress_bar] = Layout::horizontal([Constraint::Fill(1)])
         .margin(1)
@@ -80,9 +86,16 @@ pub(crate) fn render(
         .fg(Color::Yellow);
 
     let left_bottom_block = Block::default().fg(Color::Yellow);
+    let elapsed_time_block = Block::default().title("AAA").borders(Borders::ALL);
+    let total_time_block= Block::default().title("BBB").borders(Borders::ALL);
+
+    let elapsed_time = Span::from("EE");
+    let total_time = Span::from("EE");
 
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
+    frame.render_widget(elapsed_time, player_area_left);
+    frame.render_widget(total_time_block, player_area_right);
     let musics = &state.musics;
     let table = view_utility::create_table(musics);
     // TODO: Find more efficient way than cloning.
@@ -97,24 +110,13 @@ pub(crate) fn render(
         }
 
         let enlarged_volume = NumberDrawer::draw(&string_volume);
-        let volume = Line::from(vec![
-            Span::styled(" VOLUME: ", Style::default().fg(BY_COLOR)),
-            Span::from(&enlarged_volume),
-        ])
-        .centered();
 
         let centered_area = view_utility::center(
             left_top,
-            Constraint::Percentage(100),
-            Constraint::Percentage(100),
+            Constraint::Percentage(20),
+            Constraint::Percentage(20),
         );
-        let volume_paragraph = Paragraph::new(volume).block(Block::new().padding(Padding::new(
-            0,
-            0,
-            centered_area.height / 2,
-            0,
-        )));
-
+        let volume_paragraph = Paragraph::new(enlarged_volume).block(Block::new().borders(Borders::ALL));
 
         frame.render_widget(Clear, left_top);
         frame.render_widget(volume_paragraph, centered_area);
@@ -140,6 +142,7 @@ pub(crate) fn render(
             frame.buffer_mut(),
             title,
             music.length as f64,
+            player_color,
         );
     }
 }

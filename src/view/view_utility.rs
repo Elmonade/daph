@@ -1,3 +1,6 @@
+use color_eyre::owo_colors::OwoColorize;
+use ratatui::{style::Styled, symbols::{self, line::Set}, widgets::Gauge};
+
 use super::*;
 
 pub(crate) fn render_progress(
@@ -6,10 +9,11 @@ pub(crate) fn render_progress(
     buf: &mut Buffer,
     title: Block,
     duration: f64,
+    player_color: Color
 ) {
     let label = Span::styled(
         format!("{}/{}", progress.as_secs(), duration),
-        Style::new().italic().bold().fg(CUSTOM_LABEL_COLOR),
+        Style::new().italic().bold().fg(player_color),
     );
 
     let progress = progress.as_secs_f64();
@@ -23,6 +27,7 @@ pub(crate) fn render_progress(
         .filled_style(GAUGE_COLOR)
         .ratio(ratio)
         .label(label)
+        .line_set(symbols::line::THICK)
         .render(area, buf);
 }
 
@@ -35,7 +40,7 @@ pub(crate) fn title_block<'a>(color: &'a Color, author: &'a str, name: &'a str) 
     let name = Line::from(name).centered();
 
     Block::new()
-        .borders(Borders::NONE)
+        .borders(Borders::ALL)
         .padding(Padding::vertical(1))
         .title_bottom(author)
         .title_bottom(name)
