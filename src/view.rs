@@ -4,12 +4,14 @@ use crate::Audio;
 use crate::PlayerState;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
+use ratatui::layout::Flex;
 use ratatui::layout::Rect;
 use ratatui::style::palette::tailwind;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::Line;
 use ratatui::text::Span;
 use ratatui::widgets::Borders;
+use ratatui::widgets::Clear;
 use ratatui::widgets::LineGauge;
 use ratatui::widgets::{Block, BorderType, Padding};
 use ratatui::{
@@ -17,7 +19,8 @@ use ratatui::{
     widgets::{Paragraph, Row, Table, Widget},
 };
 
-const CUSTOM_LABEL_COLOR: Color = tailwind::SLATE.c200;
+const CUSTOM_LABEL_COLOR: Color = tailwind::SKY.c200;
+const BY_COLOR: Color = tailwind::RED.c300;
 const GAUGE_COLOR: Color = tailwind::GREEN.c800;
 
 pub(crate) fn render(
@@ -54,18 +57,6 @@ pub(crate) fn render(
             .margin(2)
             .areas(left);
 
-    if state.is_adjusting {
-        Paragraph::new(format!("{volume}"))
-            .block(
-                Block::bordered()
-                    .fg(Color::Green)
-                    .border_type(BorderType::Rounded)
-                    .padding(Padding::uniform(1))
-                    .title("VOLUME"),
-            )
-            .render(left_top, frame.buffer_mut());
-    }
-
     let [music_list_area] = Layout::vertical([Constraint::Fill(1)])
         .margin(1)
         .areas(left_top);
@@ -94,15 +85,43 @@ pub(crate) fn render(
     let mut table_state = state.table_state.clone();
     frame.render_stateful_widget(table, music_list_area, &mut table_state);
 
-    let mut index = 0;
+    if state.is_adjusting {
+        let volume = Line::from(vec![
+            Span::styled(" VOLUME: ", Style::default().fg(BY_COLOR)),
+            Span::from(volume.to_string()),
+        ])
+        .centered();
+
+        let centered_area = center(
+            left_top,
+            Constraint::Percentage(100),
+            Constraint::Percentage(100),
+        );
+        let volume_paragraph = Paragraph::new(volume).block(Block::new().padding(Padding::new(
+            0,
+            0,
+            centered_area.height / 2,
+            0,
+        )));
+
+        frame.render_widget(Clear, left_top);
+        frame.render_widget(volume_paragraph, centered_area);
+    }
+
+    // Player Section
+    let player_color = if is_playing {
+        CUSTOM_LABEL_COLOR
+    } else {
+        Color::Gray
+    };
+    let mut index = 8; // Point at something on startup.
+
     if let Some(current_index) = state.current_track_index {
         index = current_index;
     }
 
     if let Some(music) = state.musics.get(index) {
-        let icon = if is_playing { "||" } else { " >" };
-        let title = format!("{icon} \n {} : {}", music.author, music.name);
-        let title = title_block(&title);
+        let title = title_block(&player_color, &music.author, &music.name);
         render_progress(
             &position,
             progress_bar,
@@ -125,6 +144,7 @@ fn render_progress(progress: &Duration, area: Rect, buf: &mut Buffer, title: Blo
         return;
     }
 
+    // TODO: Use CLear before writing.
     LineGauge::default()
         .block(title)
         .filled_style(GAUGE_COLOR)
@@ -133,13 +153,20 @@ fn render_progress(progress: &Duration, area: Rect, buf: &mut Buffer, title: Blo
         .render(area, buf);
 }
 
-fn title_block(title: &str) -> Block {
-    let title = Line::from(title).centered();
+fn title_block<'a>(color: &'a Color, author: &'a str, name: &'a str) -> Block<'a> {
+    let author = Line::from(vec![
+        Span::styled(" by ", Style::default().fg(BY_COLOR)),
+        Span::from(author),
+    ])
+    .right_aligned();
+    let name = Line::from(name).centered();
+
     Block::new()
         .borders(Borders::NONE)
         .padding(Padding::vertical(1))
-        .title(title)
-        .fg(CUSTOM_LABEL_COLOR)
+        .title_bottom(author)
+        .title_bottom(name)
+        .fg(*color)
 }
 
 fn create_table(tracks: &Vec<Audio>) -> Table {
@@ -185,4 +212,12 @@ fn create_table(tracks: &Vec<Audio>) -> Table {
         .row_highlight_style(Style::new().fg(Color::Green))
         .highlight_symbol("  -  ");
     table
+}
+
+fn center(area: Rect, horizontal: Constraint, vertical: Constraint) -> Rect {
+    let [area] = Layout::horizontal([horizontal])
+        .flex(Flex::Center)
+        .areas(area);
+    let [area] = Layout::vertical([vertical]).flex(Flex::Center).areas(area);
+    area
 }
