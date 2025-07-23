@@ -2,10 +2,12 @@ use std::time::Duration;
 
 use crate::Audio;
 use crate::PlayerState;
+use number_drawer::NumberDrawer;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Flex;
 use ratatui::layout::Rect;
+use ratatui::layout::{Constraint, Layout};
 use ratatui::style::palette::tailwind;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::Line;
@@ -13,11 +15,13 @@ use ratatui::text::Span;
 use ratatui::widgets::Borders;
 use ratatui::widgets::Clear;
 use ratatui::widgets::LineGauge;
+use ratatui::widgets::Paragraph;
+use ratatui::widgets::Widget;
 use ratatui::widgets::{Block, BorderType, Padding};
-use ratatui::{
-    layout::{Constraint, Layout},
-    widgets::{Paragraph, Row, Table, Widget},
-};
+use ratatui::widgets::{Row, Table};
+
+mod number_drawer;
+mod view_utility;
 
 const CUSTOM_LABEL_COLOR: Color = tailwind::SKY.c200;
 const BY_COLOR: Color = tailwind::RED.c300;
@@ -80,19 +84,26 @@ pub(crate) fn render(
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
     let musics = &state.musics;
-    let table = create_table(musics);
+    let table = view_utility::create_table(musics);
     // TODO: Find more efficient way than cloning.
     let mut table_state = state.table_state.clone();
     frame.render_stateful_widget(table, music_list_area, &mut table_state);
 
     if state.is_adjusting {
+        let volume = (volume * 10.0) as u32;
+        let mut string_volume = volume.to_string();
+        if volume < 10 {
+            string_volume = format!("0{volume}")
+        }
+
+        let enlarged_volume = NumberDrawer::draw(&string_volume);
         let volume = Line::from(vec![
             Span::styled(" VOLUME: ", Style::default().fg(BY_COLOR)),
-            Span::from(volume.to_string()),
+            Span::from(&enlarged_volume),
         ])
         .centered();
 
-        let centered_area = center(
+        let centered_area = view_utility::center(
             left_top,
             Constraint::Percentage(100),
             Constraint::Percentage(100),
@@ -103,6 +114,7 @@ pub(crate) fn render(
             centered_area.height / 2,
             0,
         )));
+
 
         frame.render_widget(Clear, left_top);
         frame.render_widget(volume_paragraph, centered_area);
@@ -121,8 +133,8 @@ pub(crate) fn render(
     }
 
     if let Some(music) = state.musics.get(index) {
-        let title = title_block(&player_color, &music.author, &music.name);
-        render_progress(
+        let title = view_utility::title_block(&player_color, &music.author, &music.name);
+        view_utility::render_progress(
             &position,
             progress_bar,
             frame.buffer_mut(),
@@ -130,94 +142,4 @@ pub(crate) fn render(
             music.length as f64,
         );
     }
-}
-
-fn render_progress(progress: &Duration, area: Rect, buf: &mut Buffer, title: Block, duration: f64) {
-    let label = Span::styled(
-        format!("{}/{}", progress.as_secs(), duration),
-        Style::new().italic().bold().fg(CUSTOM_LABEL_COLOR),
-    );
-
-    let progress = progress.as_secs_f64();
-    let ratio = ((progress / duration) * 100.0).round() / 100.0;
-    if ratio > 1.0 {
-        return;
-    }
-
-    // TODO: Use CLear before writing.
-    LineGauge::default()
-        .block(title)
-        .filled_style(GAUGE_COLOR)
-        .ratio(ratio)
-        .label(label)
-        .render(area, buf);
-}
-
-fn title_block<'a>(color: &'a Color, author: &'a str, name: &'a str) -> Block<'a> {
-    let author = Line::from(vec![
-        Span::styled(" by ", Style::default().fg(BY_COLOR)),
-        Span::from(author),
-    ])
-    .right_aligned();
-    let name = Line::from(name).centered();
-
-    Block::new()
-        .borders(Borders::NONE)
-        .padding(Padding::vertical(1))
-        .title_bottom(author)
-        .title_bottom(name)
-        .fg(*color)
-}
-
-fn create_table(tracks: &Vec<Audio>) -> Table {
-    let header = Row::new(["Song", "Artist", "Duration"])
-        .style(Style::new().bold())
-        .bottom_margin(1);
-
-    let rows: Vec<Row> = tracks
-        .iter()
-        .map(|item| {
-            let style = match item.is_playing {
-                true => Style::default()
-                    .fg(Color::Blue)
-                    .add_modifier(Modifier::BOLD),
-                _ => Style::default(),
-            };
-
-            //TODO: Is cloning the only way? Investigate.
-            Row::new([
-                item.name.clone(),
-                item.author.clone(),
-                item.length.to_string(),
-            ])
-            .style(style)
-        })
-        .collect();
-
-    //let footer = Row::new(["Lemon", "Lemon Tree", "000"]);
-
-    let widths = [
-        Constraint::Percentage(50),
-        Constraint::Percentage(30),
-        Constraint::Percentage(20),
-    ];
-    let table = Table::new(rows, widths)
-        //.footer(footer.italic())
-        //.style(Color::White)
-        //.row_highlight_style(Style::new().on_black().bold())
-        //.column_highlight_style(Color::Gray)
-        //.cell_highlight_style(Style::new().reversed().yellow())
-        .header(header)
-        .column_spacing(1)
-        .row_highlight_style(Style::new().fg(Color::Green))
-        .highlight_symbol("  -  ");
-    table
-}
-
-fn center(area: Rect, horizontal: Constraint, vertical: Constraint) -> Rect {
-    let [area] = Layout::horizontal([horizontal])
-        .flex(Flex::Center)
-        .areas(area);
-    let [area] = Layout::vertical([vertical]).flex(Flex::Center).areas(area);
-    area
 }
