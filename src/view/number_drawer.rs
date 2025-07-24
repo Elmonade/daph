@@ -1,32 +1,32 @@
-use super::*;
-
 pub struct NumberDrawer;
 
 impl NumberDrawer {
-    // TODO: I'm well aware of the state of this section. I will refactor soon.
+    // TODO: Refactor: WIP
     pub fn draw(number: &str) -> String {
+        // TODO Use reference here and get rid of clone on line 34.
         let mut big_numbers: Vec<Vec<String>> = Vec::new();
 
         for digit in number.chars() {
             let big_number = String::from(Self::enlarge(&digit));
-            let mut first_digit: Vec<String> = Vec::new();
+            let mut digit: Vec<String> = Vec::new();
             for line in big_number.lines() {
-                first_digit.push(String::from(line))
+                digit.push(String::from(line))
             }
-            big_numbers.push(first_digit);
+            big_numbers.push(digit);
         }
 
-        let mut result = String::new();
-        let height = big_numbers.get(0).unwrap().len();
-        for i in 0..height {
-            let first = big_numbers.get(0).unwrap();
-            let second = big_numbers.get(1).unwrap();
-            result.push_str(first.get(i).unwrap());
-            result.push_str(second.get(i).unwrap());
-            result.push_str("\n");
-        }
+        let height = big_numbers[0].len();
 
-        result
+        (0..height)
+            .map(|index| {
+                big_numbers
+                    .iter()
+                    .map(|digit_line| digit_line[index].clone())
+                    .collect::<String>()
+            })
+            .collect::<Vec<String>>()
+            .join("\n")
+            + "\n"
     }
 
     fn enlarge(digit: &char) -> String {
