@@ -3,6 +3,7 @@ use super::*;
 pub struct NumberDrawer;
 
 impl NumberDrawer {
+    // TODO: I'm well aware of the state of this section. I will refactor soon.
     pub fn draw(number: &str) -> String {
         let mut big_numbers: Vec<Vec<String>> = Vec::new();
 
@@ -43,12 +44,12 @@ impl NumberDrawer {
 
             '1' => String::from(
                 "
- ╔╗ 
-╔╝║ 
-╚╗║ 
- ║║ 
-╔╝╚╗
-╚══╝
+  ╔╗ 
+ ╔╝║ 
+ ╚╗║ 
+  ║║ 
+ ╔╝╚╗
+ ╚══╝
 ",
             ),
             '2' => String::from(

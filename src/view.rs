@@ -2,14 +2,13 @@ use std::time::Duration;
 
 use crate::Audio;
 use crate::PlayerState;
-use color_eyre::owo_colors::OwoColorize;
 use number_drawer::NumberDrawer;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Flex;
 use ratatui::layout::Rect;
-use ratatui::layout::Size;
 use ratatui::layout::{Constraint, Layout};
+use ratatui::style::Styled;
 use ratatui::style::palette::tailwind;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::Line;
@@ -86,22 +85,28 @@ pub(crate) fn render(
         .fg(Color::Yellow);
 
     let left_bottom_block = Block::default().fg(Color::Yellow);
-    let elapsed_time_block = Block::default().title("AAA").borders(Borders::ALL);
-    let total_time_block= Block::default().title("BBB").borders(Borders::ALL);
-
-    let elapsed_time = Span::from("EE");
-    let total_time = Span::from("EE");
+    let elapsed_time_block = Block::default().borders(Borders::NONE).padding(Padding {
+        left: (0),
+        right: (0),
+        top: (2),
+        bottom: (0),
+    });
+    let total_time_block = Block::default().borders(Borders::NONE).padding(Padding {
+        left: (0),
+        right: (0),
+        top: (2),
+        bottom: (0),
+    });
 
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
-    frame.render_widget(elapsed_time, player_area_left);
-    frame.render_widget(total_time_block, player_area_right);
     let musics = &state.musics;
     let table = view_utility::create_table(musics);
     // TODO: Find more efficient way than cloning.
     let mut table_state = state.table_state.clone();
     frame.render_stateful_widget(table, music_list_area, &mut table_state);
 
+    // Volume Section
     if state.is_adjusting {
         let volume = (volume * 10.0) as u32;
         let mut string_volume = volume.to_string();
@@ -116,7 +121,14 @@ pub(crate) fn render(
             Constraint::Percentage(20),
             Constraint::Percentage(20),
         );
-        let volume_paragraph = Paragraph::new(enlarged_volume).block(Block::new().borders(Borders::ALL));
+        let volume_paragraph = Paragraph::new(enlarged_volume)
+            .style(Style::default().fg(CUSTOM_LABEL_COLOR))
+            .block(Block::new().borders(Borders::NONE).padding(Padding::new(
+                centered_area.width / 2 - 5,
+                0,
+                centered_area.height / 2 - 5,
+                0,
+            )));
 
         frame.render_widget(Clear, left_top);
         frame.render_widget(volume_paragraph, centered_area);
@@ -135,6 +147,23 @@ pub(crate) fn render(
     }
 
     if let Some(music) = state.musics.get(index) {
+        let elapsed_label = Span::styled(
+            format!("{}", position.as_secs()),
+            Style::new().italic().bold().fg(player_color),
+        );
+
+        let total_label = Span::styled(
+            format!(" {}", music.length.to_string()),
+            Style::new().italic().bold().fg(player_color),
+        );
+
+        let total_time = Paragraph::new(total_label).block(total_time_block);
+        let elapsed_time = Paragraph::new(elapsed_label)
+            .block(elapsed_time_block)
+            .right_aligned();
+
+        frame.render_widget(elapsed_time, player_area_left);
+        frame.render_widget(total_time, player_area_right);
         let title = view_utility::title_block(&player_color, &music.author, &music.name);
         view_utility::render_progress(
             &position,
@@ -142,7 +171,6 @@ pub(crate) fn render(
             frame.buffer_mut(),
             title,
             music.length as f64,
-            player_color,
         );
     }
 }
