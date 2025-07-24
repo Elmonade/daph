@@ -4,15 +4,28 @@ pub struct NumberDrawer;
 
 impl NumberDrawer {
     pub fn draw(number: &str) -> String {
-        let mut big_numbers: Vec<Vec<String>> = number.chars();
+        let mut big_numbers: Vec<Vec<String>> = Vec::new();
 
         for digit in number.chars() {
-            if digit.is_ascii_digit() {
-                let big_number = String::from(Self::enlarge(&digit).trim());
-                big_numbers.push_str(&big_number);
+            let big_number = String::from(Self::enlarge(&digit));
+            let mut first_digit: Vec<String> = Vec::new();
+            for line in big_number.lines() {
+                first_digit.push(String::from(line))
             }
+            big_numbers.push(first_digit);
         }
-        big_numbers
+
+        let mut result = String::new();
+        let height = big_numbers.get(0).unwrap().len();
+        for i in 0..height {
+            let first = big_numbers.get(0).unwrap();
+            let second = big_numbers.get(1).unwrap();
+            result.push_str(first.get(i).unwrap());
+            result.push_str(second.get(i).unwrap());
+            result.push_str("\n");
+        }
+
+        result
     }
 
     fn enlarge(digit: &char) -> String {
