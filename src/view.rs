@@ -36,14 +36,14 @@ pub(crate) fn render(
     volume: f32,
 ) {
     let [mut left, mut right] =
-        Layout::horizontal([Constraint::Percentage(100), Constraint::Percentage(0)])
+        Layout::horizontal([Constraint::Percentage(80), Constraint::Percentage(20)])
             .margin(0)
             .areas(frame.area());
 
     if state.is_searching {
         [left, right] =
             Layout::horizontal([Constraint::Percentage(75), Constraint::Percentage(25)])
-                .margin(0)
+                .margin(2)
                 .areas(frame.area());
 
         Paragraph::new(state.keyword.as_str())
@@ -56,6 +56,14 @@ pub(crate) fn render(
             )
             .render(right, frame.buffer_mut());
     }
+
+    let settings = Paragraph::new(state.keyword.as_str()).block(
+        Block::bordered()
+            .fg(Color::Green)
+            .border_type(BorderType::Rounded)
+            .padding(Padding::uniform(1))
+            .title("OPTIONS"),
+    );
 
     let [left_top, left_bottom] =
         Layout::vertical([Constraint::Percentage(90), Constraint::Percentage(10)])
@@ -98,13 +106,13 @@ pub(crate) fn render(
         bottom: (0),
     });
 
-    frame.render_widget(left_top_block, left_top);
-    frame.render_widget(left_bottom_block, left_bottom);
     let musics = &state.musics;
     let table = view_utility::create_table(musics);
-    // TODO: Find more efficient way than cloning.
     let mut table_state = state.table_state.clone();
     frame.render_stateful_widget(table, music_list_area, &mut table_state);
+    frame.render_widget(left_top_block, left_top);
+    frame.render_widget(left_bottom_block, left_bottom);
+    frame.render_widget(settings, right);
 
     // Volume Section
     if state.is_adjusting {
