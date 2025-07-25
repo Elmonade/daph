@@ -40,10 +40,9 @@ pub(crate) fn render(
             .areas(frame.area());
 
     if frame.area().width < 120 {
-        [left, right] =
-            Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(0)])
-                .margin(0)
-                .areas(frame.area());
+        [left, right] = Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(0)])
+            .margin(0)
+            .areas(frame.area());
     }
 
     let settings = Paragraph::new("Lemon").block(
@@ -163,15 +162,11 @@ pub(crate) fn render(
     }
 
     if let Some(music) = state.musics.get(index) {
-        let elapsed_label = Span::styled(
-            format!("{}", position.as_secs()),
-            Style::new().italic().bold().fg(player_color),
-        );
+        let progress_bar_style = Style::new().italic().bold().fg(player_color);
+        let elapsed_label = Span::styled(format!("{}", position.as_secs()), progress_bar_style);
 
-        let total_label = Span::styled(
-            format!(" {}", music.length.to_string()),
-            Style::new().italic().bold().fg(player_color),
-        );
+        let total_label =
+            Span::styled(format!(" {}", music.length.to_string()), progress_bar_style);
 
         let total_time = Paragraph::new(total_label).block(total_time_block);
         let elapsed_time = Paragraph::new(elapsed_label)

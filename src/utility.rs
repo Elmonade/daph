@@ -1,7 +1,6 @@
-
-use walkdir::WalkDir;
+use super::*;
+use walkdir::WalkDir; 
 use crate::PATH;
-use crate::Audio;
 
 use lofty::read_from_path;
 
@@ -53,4 +52,12 @@ pub(crate) fn load_audio() -> Result<(Vec<Audio>, usize), Error> {
         }
     }
     Ok((musics, number_of_tracks))
+}
+
+pub(crate) fn play_new_track(index: usize, state: &mut PlayerState) {
+    state.current_track_index = Some(index);
+    state.musics[index].is_playing = true;
+
+    let path = state.musics[index].path.clone();
+    state.tx.send(Command::New(path)).unwrap_or(());
 }

@@ -13,6 +13,7 @@ use crossterm::event::{self, Event, KeyEvent};
 
 use crate::fuzzy_search::search;
 use crate::utility::load_audio;
+use crate::utility::play_new_track;
 use crate::view::render;
 use playback::SinkState;
 
@@ -29,6 +30,7 @@ struct PlayerState {
     musics: Vec<Audio>,
     is_searching: bool,
     is_adjusting: bool,
+    is_configuring: bool,
     keyword: String,
     current_track_index: Option<usize>,
     table_state: TableState,
@@ -54,6 +56,7 @@ impl Default for PlayerState {
                 matched_tracks: Vec::new(),
                 is_searching: false,
                 is_adjusting: false,
+                is_configuring: false,
                 keyword: String::new(),
                 tx,
                 sink_rx,
@@ -133,7 +136,7 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
             state.volume = sink.volume;
         }
 
-        // TODO: Update render
+        // TODO: Update render. The state.volume is redundant.
         // Render
         terminal.draw(|f| render(f, state, is_playing, position, state.volume))?;
 
@@ -142,6 +145,12 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
         if event::poll(std::time::Duration::from_millis(50))? {
             if let Event::Key(key) = event::read()? {
                 if state.is_searching {
+                    match handle_search(key, state) {
+                        Action::Escape => state.is_searching = false,
+                        Action::Submit => {}
+                        Action::None => {}
+                    }
+                } else if state.is_configuring {
                     match handle_search(key, state) {
                         Action::Escape => state.is_searching = false,
                         Action::Submit => {}
@@ -201,7 +210,6 @@ fn handle_search(key: KeyEvent, state: &mut PlayerState) -> Action {
     Action::None
 }
 
-// TODO: Code duplication. Various buttons have a quite similar logic.
 fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
     match key.code {
         event::KeyCode::Esc => return Action::Escape,
@@ -213,36 +221,21 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                     .unwrap_or(());
             }
             ':' => {
-                if let Some(selected_index) = state.table_state.selected() {
-                    let mut index = selected_index;
-                    if selected_index > state.number_of_tracks {
-                        index = state.number_of_tracks - 1;
-                    }
+                if let Some(index) = state.table_state.selected() {
                     match state.current_track_index {
                         Some(current_index) => {
                             if index == current_index {
-                                state.musics[index].is_playing = !state.musics[index].is_playing;
-
                                 state
                                     .tx
                                     .send(Command::PlayPause(PathBuf::new()))
                                     .unwrap_or(());
                             } else {
-                                state.musics[index].is_playing = true;
                                 state.musics[current_index].is_playing = false;
-                                state.current_track_index = Some(index);
-
-                                let path = state.musics[index].path.clone();
-                                state.tx.send(Command::New(path)).unwrap_or(());
+                                play_new_track(index, state);
                             }
                         }
                         None => {
-                            //TODO: Refactor - Number of duplication of following steps.
-                            state.musics[index].is_playing = true;
-                            state.current_track_index = Some(index);
-
-                            let path = state.musics[index].path.clone();
-                            state.tx.send(Command::New(path)).unwrap_or(());
+                            play_new_track(index, state);
                         }
                     }
                 }
@@ -269,23 +262,14 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                 if let Some(mut index) = state.current_track_index {
                     state.musics[index].is_playing = false;
                     index = (index + state.number_of_tracks - 1) % state.number_of_tracks;
-
-                    state.current_track_index = Some(index);
-                    state.musics[index].is_playing = true;
-
-                    let path = state.musics[index].path.clone();
-                    state.tx.send(Command::New(path)).unwrap_or(());
+                    play_new_track(index, state);
                 }
             }
             'n' => {
                 if let Some(mut index) = state.current_track_index {
                     state.musics[index].is_playing = false;
                     index = (index + 1) % state.number_of_tracks;
-
-                    state.musics[index].is_playing = true;
-                    state.current_track_index = Some(index);
-                    let path = state.musics[index].path.clone();
-                    state.tx.send(Command::New(path)).unwrap_or(());
+                    play_new_track(index, state);
                 }
             }
             '<' => {
