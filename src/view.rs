@@ -34,10 +34,17 @@ pub(crate) fn render(
     position: Duration,
     volume: f32,
 ) {
-    let [left, right] =
-        Layout::horizontal([Constraint::Percentage(80), Constraint::Percentage(20)])
+    let [mut left, mut right] =
+        Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(20)])
             .margin(0)
             .areas(frame.area());
+
+    if frame.area().width < 120 {
+        [left, right] =
+            Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(0)])
+                .margin(0)
+                .areas(frame.area());
+    }
 
     let settings = Paragraph::new("Lemon").block(
         Block::default()
@@ -92,8 +99,8 @@ pub(crate) fn render(
     let mut table_state = state.table_state.clone();
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
-    frame.render_widget(settings, right);
     frame.render_stateful_widget(table, music_list_area, &mut table_state);
+    frame.render_widget(settings, right);
 
     // Search Section
     if state.is_searching {

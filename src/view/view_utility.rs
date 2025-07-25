@@ -1,9 +1,4 @@
-use color_eyre::owo_colors::OwoColorize;
-use ratatui::{
-    style::Styled,
-    symbols::{self, line::Set},
-    widgets::Gauge,
-};
+use ratatui::symbols::{self};
 
 use super::*;
 

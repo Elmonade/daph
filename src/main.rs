@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::process::exit;
 use std::result::Result::Ok;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Duration;
@@ -44,29 +45,30 @@ impl Default for PlayerState {
     fn default() -> Self {
         let (tx, _rx) = mpsc::channel::<Command>();
         let (_tx, sink_rx) = mpsc::channel::<SinkState>();
-        // TODO: God please stop using raw unwrap. Handle the friggin error.
-        let (musics, number_of_tracks) = load_audio().unwrap();
-
-        PlayerState {
-            _sink_state: None,
-            current_track_index: None,
-            table_state: TableState::default(),
-            musics,
-            matched_tracks: Vec::new(),
-            is_searching: false,
-            is_adjusting: false,
-            keyword: String::new(),
-            tx,
-            sink_rx,
-            number_of_tracks,
-            iteration_count: 0,
-            volume: 1.0,
+        match load_audio() {
+            Ok((musics, number_of_tracks)) => PlayerState {
+                _sink_state: None,
+                current_track_index: None,
+                table_state: TableState::default(),
+                musics,
+                matched_tracks: Vec::new(),
+                is_searching: false,
+                is_adjusting: false,
+                keyword: String::new(),
+                tx,
+                sink_rx,
+                number_of_tracks,
+                iteration_count: 0,
+                volume: 1.0,
+            },
+            Err(_) => {
+                eprintln!("No audio file found. Please try different path.");
+                exit(1);
+            }
         }
     }
 }
 
-// Added ', Clone' so we can copy Audio struct
-// inside fyzzy_search (or some shit...)
 #[derive(Debug, Clone)]
 struct Audio {
     is_playing: bool,
@@ -74,12 +76,6 @@ struct Audio {
     author: String,
     length: u64,
     path: PathBuf,
-}
-
-enum Action {
-    None,
-    Submit,
-    Escape,
 }
 
 #[derive(Debug)]
@@ -92,6 +88,19 @@ pub(crate) enum Command {
     _Next(PathBuf, i32),
     _Previous(PathBuf, i32),
     _Append(PathBuf, i32),
+}
+
+enum Action {
+    None,
+    Submit,
+    Escape,
+}
+
+enum Order {
+    Shuffle,
+    Album,
+    Artist,
+    Track,
 }
 
 fn main() -> Result<()> {
