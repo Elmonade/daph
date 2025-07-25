@@ -34,35 +34,17 @@ pub(crate) fn render(
     position: Duration,
     volume: f32,
 ) {
-    let [mut left, mut right] =
+    let [left, right] =
         Layout::horizontal([Constraint::Percentage(80), Constraint::Percentage(20)])
             .margin(0)
             .areas(frame.area());
 
-    if state.is_searching {
-        [left, right] =
-            Layout::horizontal([Constraint::Percentage(75), Constraint::Percentage(25)])
-                .margin(2)
-                .areas(frame.area());
-
-        Paragraph::new(state.keyword.as_str())
-            .block(
-                Block::bordered()
-                    .fg(Color::Green)
-                    .border_type(BorderType::Rounded)
-                    .padding(Padding::uniform(1))
-                    .title("SEARCH"),
-            )
-            .render(right, frame.buffer_mut());
-    }
-
-    let settings =
-        Paragraph::new("Lemon").block(
-            Block::default()
-                .fg(Color::Green)
-                .padding(Padding::uniform(1))
-                .title("OPTIONS"),
-        );
+    let settings = Paragraph::new("Lemon").block(
+        Block::default()
+            .fg(Color::Green)
+            .padding(Padding::uniform(1))
+            .title("OPTIONS"),
+    );
 
     let [left_top, left_bottom] =
         Layout::vertical([Constraint::Percentage(90), Constraint::Percentage(10)])
@@ -112,6 +94,20 @@ pub(crate) fn render(
     frame.render_widget(left_bottom_block, left_bottom);
     frame.render_widget(settings, right);
     frame.render_stateful_widget(table, music_list_area, &mut table_state);
+
+    // Search Section
+    if state.is_searching {
+        frame.render_widget(Clear, right);
+        Paragraph::new(state.keyword.as_str())
+            .block(
+                Block::bordered()
+                    .fg(Color::Green)
+                    .border_type(BorderType::Rounded)
+                    .padding(Padding::uniform(1))
+                    .title("SEARCH"),
+            )
+            .render(right, frame.buffer_mut());
+    }
 
     // Volume Section
     if state.is_adjusting {
