@@ -56,13 +56,13 @@ pub(crate) fn render(
             .render(right, frame.buffer_mut());
     }
 
-    let settings = Paragraph::new(state.keyword.as_str()).block(
-        Block::bordered()
-            .fg(Color::Green)
-            .border_type(BorderType::Rounded)
-            .padding(Padding::uniform(1))
-            .title("OPTIONS"),
-    );
+    let settings =
+        Paragraph::new("Lemon").block(
+            Block::default()
+                .fg(Color::Green)
+                .padding(Padding::uniform(1))
+                .title("OPTIONS"),
+        );
 
     let [left_top, left_bottom] =
         Layout::vertical([Constraint::Percentage(90), Constraint::Percentage(10)])
@@ -108,10 +108,10 @@ pub(crate) fn render(
     let musics = &state.musics;
     let table = view_utility::create_table(musics);
     let mut table_state = state.table_state.clone();
-    frame.render_stateful_widget(table, music_list_area, &mut table_state);
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
     frame.render_widget(settings, right);
+    frame.render_stateful_widget(table, music_list_area, &mut table_state);
 
     // Volume Section
     if state.is_adjusting {
