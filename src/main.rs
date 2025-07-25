@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::process::exit;
 use std::result::Result::Ok;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Duration;
@@ -38,7 +37,9 @@ struct PlayerState {
     _sink_state: Option<SinkState>,
     matched_tracks: Vec<Audio>,
     iteration_count: usize,
+    volume: f32,
 }
+
 impl Default for PlayerState {
     fn default() -> Self {
         let (tx, _rx) = mpsc::channel::<Command>();
@@ -59,6 +60,7 @@ impl Default for PlayerState {
             sink_rx,
             number_of_tracks,
             iteration_count: 0,
+            volume: 1.0,
         }
     }
 }
@@ -114,17 +116,17 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
     let mut is_playing = false;
     let mut current_track_finished = false;
     let mut position = Duration::new(0, 0);
-    let mut volume = 1.0;
     loop {
         if let Ok(sink) = state.sink_rx.try_recv() {
             is_playing = sink.is_playing;
             current_track_finished = sink.current_track_finished;
             position = sink.position;
-            volume = sink.volume;
+            state.volume = sink.volume;
         }
 
+        // TODO: Update render
         // Render
-        terminal.draw(|f| render(f, state, is_playing, position, volume))?;
+        terminal.draw(|f| render(f, state, is_playing, position, state.volume))?;
 
         // Input - Non-blocking poll. Raw Event will block this thread.
         // Wait up to 50 ms.
@@ -190,6 +192,7 @@ fn handle_search(key: KeyEvent, state: &mut PlayerState) -> Action {
     Action::None
 }
 
+// TODO: Code duplication. Various buttons have a quite similar logic.
 fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
     match key.code {
         event::KeyCode::Esc => return Action::Escape,
@@ -201,8 +204,6 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                     .unwrap_or(());
             }
             ':' => {
-                // TODO: Hold down at the end of list and press play immediatly.
-                // Why it has a massive delay?
                 if let Some(selected_index) = state.table_state.selected() {
                     let mut index = selected_index;
                     if selected_index > state.number_of_tracks {
@@ -294,16 +295,19 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                 }
                 _ => (),
             },
-            //TODO: Big number takes over the table list.
             'K' => {
                 state.is_adjusting = true;
                 state.iteration_count = 0;
-                state.tx.send(Command::Volume(VOLUME_STEP)).unwrap_or(());
+                if state.volume < 2.0 {
+                    state.tx.send(Command::Volume(VOLUME_STEP)).unwrap_or(());
+                }
             }
             'J' => {
                 state.is_adjusting = true;
                 state.iteration_count = 0;
-                state.tx.send(Command::Volume(-VOLUME_STEP)).unwrap_or(());
+                if state.volume > 0.0 {
+                    state.tx.send(Command::Volume(-VOLUME_STEP)).unwrap_or(());
+                }
             }
             _ => {}
         },
