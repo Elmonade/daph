@@ -8,7 +8,6 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Flex;
 use ratatui::layout::Rect;
 use ratatui::layout::{Constraint, Layout};
-use ratatui::style::Styled;
 use ratatui::style::palette::tailwind;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::Line;

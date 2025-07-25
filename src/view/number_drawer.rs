@@ -1,18 +1,18 @@
 pub struct NumberDrawer;
 
 impl NumberDrawer {
-    // TODO: Refactor: WIP
     pub fn draw(number: &str) -> String {
-        // TODO Use reference here and get rid of clone on line 34.
+        // TODO: Could use &str instead and get rid off digit_line[index].clone().
         let mut big_numbers: Vec<Vec<String>> = Vec::new();
 
         for digit in number.chars() {
-            let big_number = String::from(Self::enlarge(&digit));
-            let mut digit: Vec<String> = Vec::new();
-            for line in big_number.lines() {
-                digit.push(String::from(line))
-            }
-            big_numbers.push(digit);
+            let big_digit = Self::enlarge(&digit);
+
+            let digit_line: Vec<String> = big_digit.lines()
+                .map(|line| line.to_string())
+                .collect();
+
+            big_numbers.push(digit_line);
         }
 
         let height = big_numbers[0].len();
