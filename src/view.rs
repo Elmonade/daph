@@ -53,7 +53,7 @@ pub(crate) fn render(
     );
 
     let [left_top, left_bottom] =
-        Layout::vertical([Constraint::Percentage(90), Constraint::Percentage(10)])
+        Layout::vertical([Constraint::Fill(1), Constraint::Percentage(12)])
             .margin(2)
             .areas(left);
 
@@ -93,8 +93,8 @@ pub(crate) fn render(
         bottom: (0),
     });
 
-    let musics = &state.musics;
-    let table = view_utility::create_table(musics);
+    let tracks = &state.tracks;
+    let table = view_utility::create_table(tracks);
     let mut table_state = state.table_state.clone();
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
@@ -161,7 +161,7 @@ pub(crate) fn render(
         index = current_index;
     }
 
-    if let Some(music) = state.musics.get(index) {
+    if let Some(music) = state.tracks.get(index) {
         let progress_bar_style = Style::new().italic().bold().fg(player_color);
         let elapsed_label = Span::styled(format!("{}", position.as_secs()), progress_bar_style);
 

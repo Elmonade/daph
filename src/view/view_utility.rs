@@ -40,11 +40,12 @@ pub(crate) fn title_block<'a>(color: &'a Color, author: &'a str, name: &'a str) 
         .fg(*color)
 }
 
-pub(crate) fn create_table(tracks: &Vec<Audio>) -> Table {
+pub(crate) fn create_table<'a>(tracks: &'a [Audio]) -> Table<'a> {
     let header = Row::new(["Song", "Artist", "Duration"])
         .style(Style::new().bold())
         .bottom_margin(1);
 
+    //TODO: Refactor.
     let rows: Vec<Row> = tracks
         .iter()
         .map(|item| {
@@ -55,7 +56,6 @@ pub(crate) fn create_table(tracks: &Vec<Audio>) -> Table {
                 _ => Style::default(),
             };
 
-            //TODO: Is cloning the only way? Investigate.
             Row::new([
                 item.name.clone(),
                 item.author.clone(),

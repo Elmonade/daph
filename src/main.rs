@@ -1,11 +1,11 @@
 use std::path::PathBuf;
-use std::process::exit;
 use std::result::Result::Ok;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Duration;
 use std::usize;
 
 use ratatui::DefaultTerminal;
+use ratatui::widgets::ListState;
 use ratatui::widgets::TableState;
 
 use color_eyre::eyre::Result;
@@ -27,13 +27,14 @@ const SEEK_DISTANCE: usize = 5;
 const VOLUME_STEP: f32 = 0.1;
 
 struct PlayerState {
-    musics: Vec<Audio>,
+    tracks: Vec<Audio>,
     is_searching: bool,
     is_adjusting: bool,
     is_configuring: bool,
     keyword: String,
     current_track_index: Option<usize>,
     table_state: TableState,
+    list_state: ListState,
     tx: Sender<Command>,
     sink_rx: Receiver<SinkState>,
     number_of_tracks: usize,
@@ -47,27 +48,23 @@ impl Default for PlayerState {
     fn default() -> Self {
         let (tx, _rx) = mpsc::channel::<Command>();
         let (_tx, sink_rx) = mpsc::channel::<SinkState>();
-        match load_audio() {
-            Ok((musics, number_of_tracks)) => PlayerState {
-                _sink_state: None,
-                current_track_index: None,
-                table_state: TableState::default(),
-                musics,
-                matched_tracks: Vec::new(),
-                is_searching: false,
-                is_adjusting: false,
-                is_configuring: false,
-                keyword: String::new(),
-                tx,
-                sink_rx,
-                number_of_tracks,
-                iteration_count: 0,
-                volume: 1.0,
-            },
-            Err(_) => {
-                eprintln!("No audio file found. Please try different path.");
-                exit(1);
-            }
+        let (number_of_tracks, tracks) = load_audio();
+        PlayerState {
+            tracks,
+            number_of_tracks,
+            is_searching: false,
+            is_adjusting: false,
+            is_configuring: false,
+            keyword: String::new(),
+            current_track_index: None,
+            table_state: TableState::default(),
+            list_state: ListState::default(),
+            tx,
+            sink_rx,
+            _sink_state: None,
+            matched_tracks: Vec::new(),
+            iteration_count: 0,
+            volume: 1.0,
         }
     }
 }
@@ -151,8 +148,8 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
                         Action::None => {}
                     }
                 } else if state.is_configuring {
-                    match handle_search(key, state) {
-                        Action::Escape => state.is_searching = false,
+                    match handle_config(key, state) {
+                        Action::Escape => state.is_configuring = false,
                         Action::Submit => {}
                         Action::None => {}
                     }
@@ -169,13 +166,9 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
         // Auto-Queue
         if current_track_finished {
             if let Some(mut index) = state.current_track_index {
-                state.musics[index].is_playing = false;
+                state.tracks[index].is_playing = false;
                 index = (index + 1) % state.number_of_tracks;
-
-                state.musics[index].is_playing = true;
-                state.current_track_index = Some(index);
-                let path = state.musics[index].path.clone();
-                state.tx.send(Command::New(path)).unwrap_or(());
+                play_new_track(index, state);
             }
         }
         std::thread::sleep(std::time::Duration::from_millis(15));
@@ -189,15 +182,43 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
     Ok(())
 }
 
+// TODO: Use list to show possible options
+fn handle_config(key: KeyEvent, state: &mut PlayerState) -> Action {
+    match key.code {
+        event::KeyCode::Tab => state.is_configuring = !state.is_configuring,
+        event::KeyCode::Char(char) => match char {
+            'j' => {
+                if let Some(selected_index) = state.table_state.selected() {
+                    if selected_index < state.number_of_tracks - 1 {
+                        state.table_state.select_next();
+                    }
+                }
+            }
+            'k' => {
+                state.table_state.select_previous();
+            }
+            _ => {}
+        },
+        event::KeyCode::Esc => {
+            return Action::Escape;
+        }
+        event::KeyCode::Enter => {
+            return Action::Submit;
+        }
+        _ => {}
+    };
+    Action::None
+}
+
 fn handle_search(key: KeyEvent, state: &mut PlayerState) -> Action {
     match key.code {
         event::KeyCode::Char(c) => {
             state.keyword.push(c);
-            state.matched_tracks = search(&state.musics, &state.keyword);
+            state.matched_tracks = search(&state.tracks, &state.keyword);
         }
         event::KeyCode::Backspace => {
             state.keyword.pop();
-            state.matched_tracks = search(&state.musics, &state.keyword);
+            state.matched_tracks = search(&state.tracks, &state.keyword);
         }
         event::KeyCode::Esc => {
             return Action::Escape;
@@ -212,6 +233,7 @@ fn handle_search(key: KeyEvent, state: &mut PlayerState) -> Action {
 
 fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
     match key.code {
+        event::KeyCode::Tab => state.is_configuring = !state.is_configuring,
         event::KeyCode::Esc => return Action::Escape,
         event::KeyCode::Char(char) => match char {
             ' ' => {
@@ -230,7 +252,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                                     .send(Command::PlayPause(PathBuf::new()))
                                     .unwrap_or(());
                             } else {
-                                state.musics[current_index].is_playing = false;
+                                state.tracks[current_index].is_playing = false;
                                 play_new_track(index, state);
                             }
                         }
@@ -245,7 +267,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
             }
             'D' => {
                 if let Some(index) = state.table_state.selected() {
-                    state.musics.remove(index);
+                    state.tracks.remove(index);
                 }
             }
             'j' => {
@@ -260,14 +282,14 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
             }
             'p' => {
                 if let Some(mut index) = state.current_track_index {
-                    state.musics[index].is_playing = false;
+                    state.tracks[index].is_playing = false;
                     index = (index + state.number_of_tracks - 1) % state.number_of_tracks;
                     play_new_track(index, state);
                 }
             }
             'n' => {
                 if let Some(mut index) = state.current_track_index {
-                    state.musics[index].is_playing = false;
+                    state.tracks[index].is_playing = false;
                     index = (index + 1) % state.number_of_tracks;
                     play_new_track(index, state);
                 }
@@ -280,7 +302,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
             }
             '>' => match state.current_track_index {
                 Some(index) => {
-                    let length = state.musics[index].length;
+                    let length = state.tracks[index].length;
                     state
                         .tx
                         .send(Command::Forward(SEEK_DISTANCE, length as usize))
