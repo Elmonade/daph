@@ -1,4 +1,9 @@
-use ratatui::symbols::{self};
+use ratatui::{
+    symbols::{self},
+    widgets::List,
+};
+
+use crate::Order;
 
 use super::*;
 
@@ -83,6 +88,15 @@ pub(crate) fn create_table<'a>(tracks: &'a [Audio]) -> Table<'a> {
         .row_highlight_style(Style::new().fg(Color::Green))
         .highlight_symbol("  -  ");
     table
+}
+
+pub(crate) fn create_list<'a>(options: Order) -> List<'a> {
+    let list = List::new(options)
+        .block(Block::new().title("OPTIONS").borders(Borders::NONE))
+        .highlight_style(Style::new().reversed())
+        .highlight_symbol(">>")
+        .repeat_highlight_symbol(true);
+    list
 }
 
 pub(crate) fn center(area: Rect, horizontal: Constraint, vertical: Constraint) -> Rect {

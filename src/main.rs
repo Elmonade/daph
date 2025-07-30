@@ -103,11 +103,20 @@ enum Order {
     Track,
 }
 
+impl Iterator for Order {
+    type Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+}
+
 fn main() -> Result<()> {
     env_logger::init();
     let mut state = PlayerState::default();
     state.table_state.select_first();
     state.table_state.select_first_column();
+    state.list_state.select_first();
 
     let (command_tx, sink_rx) = playback::setup();
     state.tx = command_tx;
@@ -173,10 +182,11 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
         }
         std::thread::sleep(std::time::Duration::from_millis(15));
 
+        // Clear volume control window after 20*(15..65)msec
         state.iteration_count += 1;
         if state.iteration_count % 20 == 0 {
             state.is_adjusting = false;
-            state.iteration_count = 0;
+            state.iteration_count = 0; // Could be used with other windows with different interval.
         }
     }
     Ok(())
@@ -188,14 +198,14 @@ fn handle_config(key: KeyEvent, state: &mut PlayerState) -> Action {
         event::KeyCode::Tab => state.is_configuring = !state.is_configuring,
         event::KeyCode::Char(char) => match char {
             'j' => {
-                if let Some(selected_index) = state.table_state.selected() {
-                    if selected_index < state.number_of_tracks - 1 {
-                        state.table_state.select_next();
+                if let Some(selected_index) = state.list_state.selected() {
+                    if selected_index < 5 {
+                        state.list_state.select_next();
                     }
                 }
             }
             'k' => {
-                state.table_state.select_previous();
+                state.list_state.select_previous();
             }
             _ => {}
         },
