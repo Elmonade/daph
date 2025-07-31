@@ -1,3 +1,5 @@
+use std::iter::Enumerate;
+
 use ratatui::{
     symbols::{self},
     widgets::List,
@@ -90,11 +92,11 @@ pub(crate) fn create_table<'a>(tracks: &'a [Audio]) -> Table<'a> {
     table
 }
 
-pub(crate) fn create_list<'a>(options: Order) -> List<'a> {
+pub(crate) fn create_list<'a>(options: [String; 4], highlight: Style) -> List<'a> {
     let list = List::new(options)
         .block(Block::new().title("OPTIONS").borders(Borders::NONE))
-        .highlight_style(Style::new().reversed())
-        .highlight_symbol(">>")
+        .highlight_style(highlight)
+        .highlight_symbol(" - ")
         .repeat_highlight_symbol(true);
     list
 }

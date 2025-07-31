@@ -3,6 +3,7 @@ use std::time::Duration;
 use crate::Audio;
 use crate::Order;
 use crate::PlayerState;
+use color_eyre::owo_colors::OwoColorize;
 use number_drawer::NumberDrawer;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
@@ -96,15 +97,31 @@ pub(crate) fn render(
 
     let tracks = &state.tracks;
     let table = view_utility::create_table(tracks);
-    let list = view_utility::create_list(Order);
 
     let mut table_state = state.table_state.clone();
     let mut list_state = state.list_state.clone();
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
     frame.render_stateful_widget(table, music_list_area, &mut table_state);
-    frame.render_stateful_widget(list , right, &mut list_state);
     //frame.render_widget(settings, right);
+
+    // Config Section
+    let highlight = if state.is_configuring {
+        Style::new().reversed()
+    } else {
+        Style::new()
+    };
+
+    let list = view_utility::create_list(
+        [
+            Order::Shuffle.to_string(),
+            Order::Album.to_string(),
+            Order::Track.to_string(),
+            Order::Artist.to_string(),
+        ],
+        highlight,
+    );
+    frame.render_stateful_widget(list, right, &mut list_state);
 
     // Search Section
     if state.is_searching {

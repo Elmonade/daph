@@ -1,3 +1,5 @@
+use std::error::Error;
+use std::fmt::Display;
 use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -42,6 +44,7 @@ struct PlayerState {
     matched_tracks: Vec<Audio>,
     iteration_count: usize,
     volume: f32,
+    playback_order: Order,
 }
 
 impl Default for PlayerState {
@@ -65,6 +68,7 @@ impl Default for PlayerState {
             matched_tracks: Vec::new(),
             iteration_count: 0,
             volume: 1.0,
+            playback_order: Order::Shuffle,
         }
     }
 }
@@ -103,11 +107,27 @@ enum Order {
     Track,
 }
 
+impl Display for Order {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Order::Shuffle => write!(f, "Shuffle"),
+            Order::Album => write!(f, "Album"),
+            Order::Artist => write!(f, "Artist"),
+            Order::Track => write!(f, "Track"),
+        }
+    }
+}
+
 impl Iterator for Order {
-    type Item;
+    type Item = Order;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        match self {
+            Order::Shuffle => Some(Order::Album),
+            Order::Album => Some(Order::Artist),
+            Order::Artist => Some(Order::Track),
+            Order::Track => Some(Order::Shuffle),
+        }
     }
 }
 
@@ -199,7 +219,7 @@ fn handle_config(key: KeyEvent, state: &mut PlayerState) -> Action {
         event::KeyCode::Char(char) => match char {
             'j' => {
                 if let Some(selected_index) = state.list_state.selected() {
-                    if selected_index < 5 {
+                    if selected_index < 3 {
                         state.list_state.select_next();
                     }
                 }
@@ -213,6 +233,15 @@ fn handle_config(key: KeyEvent, state: &mut PlayerState) -> Action {
             return Action::Escape;
         }
         event::KeyCode::Enter => {
+            if let Some(index) = state.list_state.selected() {
+                println!("SELECTED LIST: {index}");
+                match state.playback_order {
+                    Order::Shuffle => println!("Shuffle"),
+                    Order::Album => todo!(),
+                    Order::Artist => todo!(),
+                    Order::Track => todo!(),
+                }
+            }
             return Action::Submit;
         }
         _ => {}
