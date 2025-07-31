@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::result::Result::Ok;

@@ -94,9 +94,8 @@ pub(crate) fn create_table<'a>(tracks: &'a [Audio]) -> Table<'a> {
 
 pub(crate) fn create_list<'a>(options: [String; 4], highlight: Style) -> List<'a> {
     let list = List::new(options)
-        .block(Block::new().title("OPTIONS").borders(Borders::NONE))
         .highlight_style(highlight)
-        .highlight_symbol(" - ")
+        .highlight_symbol("  ")
         .repeat_highlight_symbol(true);
     list
 }

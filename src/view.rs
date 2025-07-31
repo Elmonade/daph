@@ -3,7 +3,6 @@ use std::time::Duration;
 use crate::Audio;
 use crate::Order;
 use crate::PlayerState;
-use color_eyre::owo_colors::OwoColorize;
 use number_drawer::NumberDrawer;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
@@ -37,7 +36,7 @@ pub(crate) fn render(
     volume: f32,
 ) {
     let [mut left, mut right] =
-        Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(20)])
+        Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(25)])
             .margin(0)
             .areas(frame.area());
 
@@ -47,17 +46,21 @@ pub(crate) fn render(
             .areas(frame.area());
     }
 
-    let settings = Paragraph::new("Lemon").block(
-        Block::default()
-            .fg(Color::Green)
-            .padding(Padding::uniform(1))
-            .title("OPTIONS"),
-    );
+    let settings = Block::default()
+        .fg(Color::Green)
+        .padding(Padding::uniform(4))
+        .title("PLAYBACK ORDER")
+        .borders(Borders::TOP | Borders::BOTTOM);
 
     let [left_top, left_bottom] =
         Layout::vertical([Constraint::Fill(1), Constraint::Percentage(12)])
             .margin(2)
             .areas(left);
+
+    let [right_top, right_bottom] =
+        Layout::vertical([Constraint::Fill(1), Constraint::Percentage(75)])
+            .margin(2)
+            .areas(right);
 
     let [music_list_area] = Layout::vertical([Constraint::Fill(1)])
         .margin(1)
@@ -97,13 +100,20 @@ pub(crate) fn render(
 
     let tracks = &state.tracks;
     let table = view_utility::create_table(tracks);
+    let dolphin =
+        Paragraph::new(NumberDrawer::draw(&"dolphin")).block(Block::default().padding(Padding {
+            left: (20),
+            right: (0),
+            top: (20),
+            bottom: (0),
+        }));
 
     let mut table_state = state.table_state.clone();
     let mut list_state = state.list_state.clone();
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
+    frame.render_widget(dolphin, right_bottom);
     frame.render_stateful_widget(table, music_list_area, &mut table_state);
-    //frame.render_widget(settings, right);
 
     // Config Section
     let highlight = if state.is_configuring {
@@ -121,7 +131,7 @@ pub(crate) fn render(
         ],
         highlight,
     );
-    frame.render_stateful_widget(list, right, &mut list_state);
+    frame.render_stateful_widget(list.block(settings), right_top, &mut list_state);
 
     // Search Section
     if state.is_searching {
