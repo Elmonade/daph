@@ -92,8 +92,8 @@ pub(crate) fn create_table<'a>(tracks: &'a [Audio]) -> Table<'a> {
     table
 }
 
-pub(crate) fn create_list<'a>(options: [String; 4], highlight: Style) -> List<'a> {
-    let list = List::new(options)
+pub(crate) fn create_list(rows: Vec<Span>, highlight: Style) -> List {
+    let list = List::new(rows)
         .highlight_style(highlight)
         .highlight_symbol("  ")
         .repeat_highlight_symbol(true);

@@ -58,6 +58,35 @@ pub(crate) fn load_audio() -> (usize, Vec<Audio>) {
     (tracks.len(), tracks)
 }
 
+pub(crate) fn order_by(new: &Order, old: &Order, tracks: &mut [Audio]) {
+    if new == old {
+        return
+    }
+    match new {
+        Order::Shuffle => order_shuffle(tracks),
+        Order::Album => order_album(tracks),
+        Order::Artist => order_artist(tracks),
+        Order::Track => order_tracks(tracks),
+    }
+}
+
+fn order_tracks(tracks: &mut [Audio]) {
+    return
+}
+
+fn order_artist(tracks: &mut [Audio]) {
+    return
+}
+
+fn order_album(tracks: &mut [Audio]) {
+    return
+}
+
+fn order_shuffle(tracks: &mut [Audio]) {
+    return
+}
+
+
 pub(crate) fn play_new_track(index: usize, state: &mut PlayerState) {
     state.current_track_index = Some(index);
     state.tracks[index].is_playing = true;

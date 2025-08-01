@@ -14,6 +14,7 @@ use crossterm::event::{self, Event, KeyEvent};
 
 use crate::fuzzy_search::search;
 use crate::utility::load_audio;
+use crate::utility::order_by;
 use crate::utility::play_new_track;
 use crate::view::render;
 use playback::SinkState;
@@ -99,11 +100,18 @@ enum Action {
     Escape,
 }
 
+// TODO: Anything involving Order is just horrible code. Refactor.
 enum Order {
     Shuffle,
     Album,
     Artist,
     Track,
+}
+
+impl PartialEq for Order {
+    fn eq(&self, other: &Self) -> bool {
+        self.to_string() == other.to_string()
+    }
 }
 
 impl Display for Order {
@@ -211,7 +219,6 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
     Ok(())
 }
 
-// TODO: Use list to show possible options
 fn handle_config(key: KeyEvent, state: &mut PlayerState) -> Action {
     match key.code {
         event::KeyCode::Tab => state.is_configuring = !state.is_configuring,
@@ -233,12 +240,28 @@ fn handle_config(key: KeyEvent, state: &mut PlayerState) -> Action {
         }
         event::KeyCode::Enter => {
             if let Some(index) = state.list_state.selected() {
-                println!("SELECTED LIST: {index}");
-                match state.playback_order {
-                    Order::Shuffle => println!("Shuffle"),
-                    Order::Album => todo!(),
-                    Order::Artist => todo!(),
-                    Order::Track => todo!(),
+                match index {
+                    0 => {
+                        order_by(&Order::Shuffle, &state.playback_order, &mut state.tracks);
+                        state.playback_order = Order::Shuffle;
+                    }
+                    1 => {
+                        order_by(&Order::Album, &state.playback_order, &mut state.tracks);
+                        state.playback_order = Order::Album;
+                    }
+                    2 => {
+                        order_by(&Order::Artist, &state.playback_order, &mut state.tracks);
+                        state.playback_order = Order::Artist;
+                    }
+
+                    3 => {
+                        order_by(&Order::Track, &state.playback_order, &mut state.tracks);
+                        state.playback_order = Order::Track;
+                    }
+                    _ => {
+                        order_by(&Order::Shuffle, &state.playback_order, &mut state.tracks);
+                        state.playback_order = Order::Shuffle;
+                    }
                 }
             }
             return Action::Submit;

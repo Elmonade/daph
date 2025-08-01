@@ -98,8 +98,7 @@ pub(crate) fn render(
         bottom: (0),
     });
 
-    let tracks = &state.tracks;
-    let table = view_utility::create_table(tracks);
+    let table = view_utility::create_table(&state.tracks);
     let dolphin =
         Paragraph::new(NumberDrawer::draw(&"dolphin")).block(Block::default().padding(Padding {
             left: (20),
@@ -122,15 +121,29 @@ pub(crate) fn render(
         Style::new()
     };
 
-    let list = view_utility::create_list(
-        [
-            Order::Shuffle.to_string(),
-            Order::Album.to_string(),
-            Order::Track.to_string(),
-            Order::Artist.to_string(),
-        ],
-        highlight,
-    );
+    let options = [
+        Order::Shuffle.to_string(),
+        Order::Album.to_string(),
+        Order::Artist.to_string(),
+        Order::Track.to_string(),
+    ];
+
+    // TODO: This should be inside view_utility.
+    let rows: Vec<Span> = options
+        .iter()
+        .map(|item| {
+            let style = match *item == state.playback_order.to_string() {
+                true => Style::default()
+                    .fg(Color::Blue)
+                    .add_modifier(Modifier::BOLD),
+                _ => Style::default(),
+            };
+
+            Span::from(item).style(style)
+        })
+        .collect();
+
+    let list = view_utility::create_list(rows, highlight);
     frame.render_stateful_widget(list.block(settings), right_top, &mut list_state);
 
     // Search Section
