@@ -1,5 +1,7 @@
 use super::*;
 use crate::PATH;
+use log::{info, warn};
+use rand::Rng;
 use walkdir::WalkDir;
 
 use lofty::read_from_path;
@@ -60,7 +62,7 @@ pub(crate) fn load_audio() -> (usize, Vec<Audio>) {
 
 pub(crate) fn order_by(new: &Order, old: &Order, tracks: &mut [Audio]) {
     if new == old {
-        return
+        return;
     }
     match new {
         Order::Shuffle => order_shuffle(tracks),
@@ -71,21 +73,28 @@ pub(crate) fn order_by(new: &Order, old: &Order, tracks: &mut [Audio]) {
 }
 
 fn order_tracks(tracks: &mut [Audio]) {
-    return
+    return;
 }
 
 fn order_artist(tracks: &mut [Audio]) {
-    return
+    return;
 }
 
 fn order_album(tracks: &mut [Audio]) {
-    return
+    return;
 }
 
 fn order_shuffle(tracks: &mut [Audio]) {
-    return
+    // Fisher-Yate Algorithm
+    let size: usize = tracks.len();
+    let mut rng = rand::rng();
+    for i in 0..size {
+        let random_number: u64 = rng.random();
+        let j = random_number as usize % (size - i) + i;
+        tracks.swap(i, j);
+    }
+    return;
 }
-
 
 pub(crate) fn play_new_track(index: usize, state: &mut PlayerState) {
     state.current_track_index = Some(index);

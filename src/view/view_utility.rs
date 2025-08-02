@@ -1,11 +1,7 @@
-use std::iter::Enumerate;
-
 use ratatui::{
     symbols::{self},
     widgets::List,
 };
-
-use crate::Order;
 
 use super::*;
 
@@ -58,7 +54,7 @@ pub(crate) fn create_table<'a>(tracks: &'a [Audio]) -> Table<'a> {
         .map(|item| {
             let style = match item.is_playing {
                 true => Style::default()
-                    .fg(Color::Blue)
+                    .fg(CUSTOM_LABEL_COLOR)
                     .add_modifier(Modifier::BOLD),
                 _ => Style::default(),
             };

@@ -100,7 +100,7 @@ pub(crate) fn render(
 
     let table = view_utility::create_table(&state.tracks);
     let dolphin =
-        Paragraph::new(NumberDrawer::draw(&"dolphin")).block(Block::default().padding(Padding {
+        Paragraph::new(NumberDrawer::draw(&"bird")).block(Block::default().padding(Padding {
             left: (20),
             right: (0),
             top: (20),
@@ -134,8 +134,7 @@ pub(crate) fn render(
         .map(|item| {
             let style = match *item == state.playback_order.to_string() {
                 true => Style::default()
-                    .fg(Color::Blue)
-                    .add_modifier(Modifier::BOLD),
+                    .add_modifier(Modifier::UNDERLINED),
                 _ => Style::default(),
             };
 
@@ -195,11 +194,11 @@ pub(crate) fn render(
     }
 
     // Player Section
-    let player_color = if is_playing {
-        CUSTOM_LABEL_COLOR
-    } else {
-        Color::Gray
+    let player_color = match is_playing {
+        true => CUSTOM_LABEL_COLOR,
+        false => Color::Gray,
     };
+
     let mut index = 8; // Point at something on startup.
 
     if let Some(current_index) = state.current_track_index {

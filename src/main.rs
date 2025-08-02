@@ -68,7 +68,7 @@ impl Default for PlayerState {
             matched_tracks: Vec::new(),
             iteration_count: 0,
             volume: 1.0,
-            playback_order: Order::Shuffle,
+            playback_order: Order::Artist,
         }
     }
 }
