@@ -73,11 +73,21 @@ pub(crate) fn order_by(new: &Order, old: &Order, tracks: &mut [Audio]) {
 }
 
 fn order_tracks(tracks: &mut [Audio]) {
-    return;
+    tracks.sort_by(|a, b| {
+        a.name.to_lowercase().cmp(&b.name.to_lowercase())
+    });
 }
 
 fn order_artist(tracks: &mut [Audio]) {
-    return;
+    tracks.sort_by(|a, b| {
+        let artist_cmp = a.author.to_lowercase().cmp(&b.author.to_lowercase());
+        if artist_cmp == std::cmp::Ordering::Equal {
+            // If artists are the same, sort by track name
+            a.name.to_lowercase().cmp(&b.name.to_lowercase())
+        } else {
+            artist_cmp
+        }
+    });
 }
 
 fn order_album(tracks: &mut [Audio]) {
@@ -93,7 +103,6 @@ fn order_shuffle(tracks: &mut [Audio]) {
         let j = random_number as usize % (size - i) + i;
         tracks.swap(i, j);
     }
-    return;
 }
 
 pub(crate) fn play_new_track(index: usize, state: &mut PlayerState) {
