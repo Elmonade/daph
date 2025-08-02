@@ -1,8 +1,6 @@
-use color_eyre::owo_colors::OwoColorize;
 use ratatui::{
-    style::Styled,
-    symbols::{self, line::Set},
-    widgets::Gauge,
+    symbols::{self},
+    widgets::List,
 };
 
 use super::*;
@@ -45,22 +43,22 @@ pub(crate) fn title_block<'a>(color: &'a Color, author: &'a str, name: &'a str) 
         .fg(*color)
 }
 
-pub(crate) fn create_table(tracks: &Vec<Audio>) -> Table {
+pub(crate) fn create_table<'a>(tracks: &'a [Audio]) -> Table<'a> {
     let header = Row::new(["Song", "Artist", "Duration"])
         .style(Style::new().bold())
         .bottom_margin(1);
 
+    //TODO: Refactor.
     let rows: Vec<Row> = tracks
         .iter()
         .map(|item| {
             let style = match item.is_playing {
                 true => Style::default()
-                    .fg(Color::Blue)
+                    .fg(CUSTOM_LABEL_COLOR)
                     .add_modifier(Modifier::BOLD),
                 _ => Style::default(),
             };
 
-            //TODO: Is cloning the only way? Investigate.
             Row::new([
                 item.name.clone(),
                 item.author.clone(),
@@ -88,6 +86,14 @@ pub(crate) fn create_table(tracks: &Vec<Audio>) -> Table {
         .row_highlight_style(Style::new().fg(Color::Green))
         .highlight_symbol("  -  ");
     table
+}
+
+pub(crate) fn create_list(rows: Vec<Span>, highlight: Style) -> List {
+    let list = List::new(rows)
+        .highlight_style(highlight)
+        .highlight_symbol("  ")
+        .repeat_highlight_symbol(true);
+    list
 }
 
 pub(crate) fn center(area: Rect, horizontal: Constraint, vertical: Constraint) -> Rect {

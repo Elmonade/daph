@@ -7,12 +7,12 @@ impl NumberDrawer {
 
         for digit in number.chars() {
             let big_digit = Self::enlarge(&digit);
-
-            let digit_line: Vec<String> = big_digit.lines()
-                .map(|line| line.to_string())
-                .collect();
-
+            let digit_line: Vec<String> = big_digit.lines().map(|line| line.to_string()).collect();
             big_numbers.push(digit_line);
+
+            if !digit.is_ascii_digit() {
+                break
+            }
         }
 
         let height = big_numbers[0].len();
@@ -138,7 +138,14 @@ impl NumberDrawer {
 
 ",
             ),
-            _ => String::from("NONE"),
+            _ => String::from(
+                "
+  ,_,  
+ (.,.) 
+ (   ) 
+--\"-\"---
+",
+            ),
         }
     }
 }

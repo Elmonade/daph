@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -5,6 +6,7 @@ use std::time::Duration;
 use std::usize;
 
 use ratatui::DefaultTerminal;
+use ratatui::widgets::ListState;
 use ratatui::widgets::TableState;
 
 use color_eyre::eyre::Result;
@@ -12,6 +14,8 @@ use crossterm::event::{self, Event, KeyEvent};
 
 use crate::fuzzy_search::search;
 use crate::utility::load_audio;
+use crate::utility::order_by;
+use crate::utility::play_new_track;
 use crate::view::render;
 use playback::SinkState;
 
@@ -20,17 +24,19 @@ mod playback;
 mod utility;
 mod view;
 
-const PATH: &str = "/home/dread/audio";
+const PATH: &str = "/home/jello/Media/audio";
 const SEEK_DISTANCE: usize = 5;
 const VOLUME_STEP: f32 = 0.1;
 
 struct PlayerState {
-    musics: Vec<Audio>,
+    tracks: Vec<Audio>,
     is_searching: bool,
     is_adjusting: bool,
+    is_configuring: bool,
     keyword: String,
     current_track_index: Option<usize>,
     table_state: TableState,
+    list_state: ListState,
     tx: Sender<Command>,
     sink_rx: Receiver<SinkState>,
     number_of_tracks: usize,
@@ -38,35 +44,35 @@ struct PlayerState {
     matched_tracks: Vec<Audio>,
     iteration_count: usize,
     volume: f32,
+    playback_order: Order,
 }
 
 impl Default for PlayerState {
     fn default() -> Self {
         let (tx, _rx) = mpsc::channel::<Command>();
         let (_tx, sink_rx) = mpsc::channel::<SinkState>();
-        // TODO: God please stop using raw unwrap. Handle the friggin error.
-        let (musics, number_of_tracks) = load_audio().unwrap();
-
+        let (number_of_tracks, tracks) = load_audio();
         PlayerState {
-            _sink_state: None,
-            current_track_index: None,
-            table_state: TableState::default(),
-            musics,
-            matched_tracks: Vec::new(),
+            tracks,
+            number_of_tracks,
             is_searching: false,
             is_adjusting: false,
+            is_configuring: false,
             keyword: String::new(),
+            current_track_index: None,
+            table_state: TableState::default(),
+            list_state: ListState::default(),
             tx,
             sink_rx,
-            number_of_tracks,
+            _sink_state: None,
+            matched_tracks: Vec::new(),
             iteration_count: 0,
             volume: 1.0,
+            playback_order: Order::Artist,
         }
     }
 }
 
-// Added ', Clone' so we can copy Audio struct
-// inside fyzzy_search (or some shit...)
 #[derive(Debug, Clone)]
 struct Audio {
     is_playing: bool,
@@ -74,12 +80,6 @@ struct Audio {
     author: String,
     length: u64,
     path: PathBuf,
-}
-
-enum Action {
-    None,
-    Submit,
-    Escape,
 }
 
 #[derive(Debug)]
@@ -94,11 +94,56 @@ pub(crate) enum Command {
     _Append(PathBuf, i32),
 }
 
+enum Action {
+    None,
+    Submit,
+    Escape,
+}
+
+// TODO: Anything involving Order is just horrible code. Refactor.
+enum Order {
+    Shuffle,
+    Album,
+    Artist,
+    Track,
+}
+
+impl PartialEq for Order {
+    fn eq(&self, other: &Self) -> bool {
+        self.to_string() == other.to_string()
+    }
+}
+
+impl Display for Order {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Order::Shuffle => write!(f, "Shuffle"),
+            Order::Album => write!(f, "Album"),
+            Order::Artist => write!(f, "Artist"),
+            Order::Track => write!(f, "Track"),
+        }
+    }
+}
+
+impl Iterator for Order {
+    type Item = Order;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Order::Shuffle => Some(Order::Album),
+            Order::Album => Some(Order::Artist),
+            Order::Artist => Some(Order::Track),
+            Order::Track => Some(Order::Shuffle),
+        }
+    }
+}
+
 fn main() -> Result<()> {
     env_logger::init();
     let mut state = PlayerState::default();
     state.table_state.select_first();
     state.table_state.select_first_column();
+    state.list_state.select_first();
 
     let (command_tx, sink_rx) = playback::setup();
     state.tx = command_tx;
@@ -124,7 +169,7 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
             state.volume = sink.volume;
         }
 
-        // TODO: Update render
+        // TODO: Update render. The state.volume is redundant.
         // Render
         terminal.draw(|f| render(f, state, is_playing, position, state.volume))?;
 
@@ -135,6 +180,12 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
                 if state.is_searching {
                     match handle_search(key, state) {
                         Action::Escape => state.is_searching = false,
+                        Action::Submit => {}
+                        Action::None => {}
+                    }
+                } else if state.is_configuring {
+                    match handle_config(key, state) {
+                        Action::Escape => state.is_configuring = false,
                         Action::Submit => {}
                         Action::None => {}
                     }
@@ -151,35 +202,84 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
         // Auto-Queue
         if current_track_finished {
             if let Some(mut index) = state.current_track_index {
-                state.musics[index].is_playing = false;
+                state.tracks[index].is_playing = false;
                 index = (index + 1) % state.number_of_tracks;
-
-                state.musics[index].is_playing = true;
-                state.current_track_index = Some(index);
-                let path = state.musics[index].path.clone();
-                state.tx.send(Command::New(path)).unwrap_or(());
+                play_new_track(index, state);
             }
         }
         std::thread::sleep(std::time::Duration::from_millis(15));
 
+        // Clear volume control window after 20*(15..65)msec
         state.iteration_count += 1;
         if state.iteration_count % 20 == 0 {
             state.is_adjusting = false;
-            state.iteration_count = 0;
+            state.iteration_count = 0; // Could be used with other windows with different interval.
         }
     }
     Ok(())
+}
+
+fn handle_config(key: KeyEvent, state: &mut PlayerState) -> Action {
+    match key.code {
+        event::KeyCode::Tab => state.is_configuring = !state.is_configuring,
+        event::KeyCode::Char(char) => match char {
+            'j' => {
+                if let Some(selected_index) = state.list_state.selected() {
+                    if selected_index < 3 {
+                        state.list_state.select_next();
+                    }
+                }
+            }
+            'k' => {
+                state.list_state.select_previous();
+            }
+            _ => {}
+        },
+        event::KeyCode::Esc => {
+            return Action::Escape;
+        }
+        event::KeyCode::Enter => {
+            if let Some(index) = state.list_state.selected() {
+                match index {
+                    0 => {
+                        order_by(&Order::Shuffle, &state.playback_order, &mut state.tracks);
+                        state.playback_order = Order::Shuffle;
+                    }
+                    1 => {
+                        order_by(&Order::Album, &state.playback_order, &mut state.tracks);
+                        state.playback_order = Order::Album;
+                    }
+                    2 => {
+                        order_by(&Order::Artist, &state.playback_order, &mut state.tracks);
+                        state.playback_order = Order::Artist;
+                    }
+
+                    3 => {
+                        order_by(&Order::Track, &state.playback_order, &mut state.tracks);
+                        state.playback_order = Order::Track;
+                    }
+                    _ => {
+                        order_by(&Order::Shuffle, &state.playback_order, &mut state.tracks);
+                        state.playback_order = Order::Shuffle;
+                    }
+                }
+            }
+            return Action::Submit;
+        }
+        _ => {}
+    };
+    Action::None
 }
 
 fn handle_search(key: KeyEvent, state: &mut PlayerState) -> Action {
     match key.code {
         event::KeyCode::Char(c) => {
             state.keyword.push(c);
-            state.matched_tracks = search(&state.musics, &state.keyword);
+            state.matched_tracks = search(&state.tracks, &state.keyword);
         }
         event::KeyCode::Backspace => {
             state.keyword.pop();
-            state.matched_tracks = search(&state.musics, &state.keyword);
+            state.matched_tracks = search(&state.tracks, &state.keyword);
         }
         event::KeyCode::Esc => {
             return Action::Escape;
@@ -192,9 +292,9 @@ fn handle_search(key: KeyEvent, state: &mut PlayerState) -> Action {
     Action::None
 }
 
-// TODO: Code duplication. Various buttons have a quite similar logic.
 fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
     match key.code {
+        event::KeyCode::Tab => state.is_configuring = !state.is_configuring,
         event::KeyCode::Esc => return Action::Escape,
         event::KeyCode::Char(char) => match char {
             ' ' => {
@@ -204,36 +304,21 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                     .unwrap_or(());
             }
             ':' => {
-                if let Some(selected_index) = state.table_state.selected() {
-                    let mut index = selected_index;
-                    if selected_index > state.number_of_tracks {
-                        index = state.number_of_tracks - 1;
-                    }
+                if let Some(index) = state.table_state.selected() {
                     match state.current_track_index {
                         Some(current_index) => {
                             if index == current_index {
-                                state.musics[index].is_playing = !state.musics[index].is_playing;
-
                                 state
                                     .tx
                                     .send(Command::PlayPause(PathBuf::new()))
                                     .unwrap_or(());
                             } else {
-                                state.musics[index].is_playing = true;
-                                state.musics[current_index].is_playing = false;
-                                state.current_track_index = Some(index);
-
-                                let path = state.musics[index].path.clone();
-                                state.tx.send(Command::New(path)).unwrap_or(());
+                                state.tracks[current_index].is_playing = false;
+                                play_new_track(index, state);
                             }
                         }
                         None => {
-                            //TODO: Refactor - Number of duplication of following steps.
-                            state.musics[index].is_playing = true;
-                            state.current_track_index = Some(index);
-
-                            let path = state.musics[index].path.clone();
-                            state.tx.send(Command::New(path)).unwrap_or(());
+                            play_new_track(index, state);
                         }
                     }
                 }
@@ -243,7 +328,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
             }
             'D' => {
                 if let Some(index) = state.table_state.selected() {
-                    state.musics.remove(index);
+                    state.tracks.remove(index);
                 }
             }
             'j' => {
@@ -258,25 +343,16 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
             }
             'p' => {
                 if let Some(mut index) = state.current_track_index {
-                    state.musics[index].is_playing = false;
+                    state.tracks[index].is_playing = false;
                     index = (index + state.number_of_tracks - 1) % state.number_of_tracks;
-
-                    state.current_track_index = Some(index);
-                    state.musics[index].is_playing = true;
-
-                    let path = state.musics[index].path.clone();
-                    state.tx.send(Command::New(path)).unwrap_or(());
+                    play_new_track(index, state);
                 }
             }
             'n' => {
                 if let Some(mut index) = state.current_track_index {
-                    state.musics[index].is_playing = false;
+                    state.tracks[index].is_playing = false;
                     index = (index + 1) % state.number_of_tracks;
-
-                    state.musics[index].is_playing = true;
-                    state.current_track_index = Some(index);
-                    let path = state.musics[index].path.clone();
-                    state.tx.send(Command::New(path)).unwrap_or(());
+                    play_new_track(index, state);
                 }
             }
             '<' => {
@@ -287,7 +363,7 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
             }
             '>' => match state.current_track_index {
                 Some(index) => {
-                    let length = state.musics[index].length;
+                    let length = state.tracks[index].length;
                     state
                         .tx
                         .send(Command::Forward(SEEK_DISTANCE, length as usize))

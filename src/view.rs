@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use crate::Audio;
+use crate::Order;
 use crate::PlayerState;
 use number_drawer::NumberDrawer;
 use ratatui::Frame;
@@ -35,39 +36,31 @@ pub(crate) fn render(
     volume: f32,
 ) {
     let [mut left, mut right] =
-        Layout::horizontal([Constraint::Percentage(80), Constraint::Percentage(20)])
+        Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(25)])
             .margin(0)
             .areas(frame.area());
 
-    if state.is_searching {
-        [left, right] =
-            Layout::horizontal([Constraint::Percentage(75), Constraint::Percentage(25)])
-                .margin(2)
-                .areas(frame.area());
-
-        Paragraph::new(state.keyword.as_str())
-            .block(
-                Block::bordered()
-                    .fg(Color::Green)
-                    .border_type(BorderType::Rounded)
-                    .padding(Padding::uniform(1))
-                    .title("SEARCH"),
-            )
-            .render(right, frame.buffer_mut());
+    if frame.area().width < 120 {
+        [left, right] = Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(0)])
+            .margin(0)
+            .areas(frame.area());
     }
 
-    let settings =
-        Paragraph::new("Lemon").block(
-            Block::default()
-                .fg(Color::Green)
-                .padding(Padding::uniform(1))
-                .title("OPTIONS"),
-        );
+    let settings = Block::default()
+        .fg(Color::Green)
+        .padding(Padding::uniform(4))
+        .title("PLAYBACK ORDER")
+        .borders(Borders::TOP | Borders::BOTTOM);
 
     let [left_top, left_bottom] =
-        Layout::vertical([Constraint::Percentage(90), Constraint::Percentage(10)])
+        Layout::vertical([Constraint::Fill(1), Constraint::Percentage(12)])
             .margin(2)
             .areas(left);
+
+    let [right_top, right_bottom] =
+        Layout::vertical([Constraint::Fill(1), Constraint::Percentage(75)])
+            .margin(2)
+            .areas(right);
 
     let [music_list_area] = Layout::vertical([Constraint::Fill(1)])
         .margin(1)
@@ -105,13 +98,66 @@ pub(crate) fn render(
         bottom: (0),
     });
 
-    let musics = &state.musics;
-    let table = view_utility::create_table(musics);
+    let table = view_utility::create_table(&state.tracks);
+    let dolphin =
+        Paragraph::new(NumberDrawer::draw(&"bird")).block(Block::default().padding(Padding {
+            left: (20),
+            right: (0),
+            top: (20),
+            bottom: (0),
+        }));
+
     let mut table_state = state.table_state.clone();
+    let mut list_state = state.list_state.clone();
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
-    frame.render_widget(settings, right);
+    frame.render_widget(dolphin, right_bottom);
     frame.render_stateful_widget(table, music_list_area, &mut table_state);
+
+    // Config Section
+    let highlight = if state.is_configuring {
+        Style::new().reversed()
+    } else {
+        Style::new()
+    };
+
+    let options = [
+        Order::Shuffle.to_string(),
+        Order::Album.to_string(),
+        Order::Artist.to_string(),
+        Order::Track.to_string(),
+    ];
+
+    // TODO: This should be inside view_utility.
+    let rows: Vec<Span> = options
+        .iter()
+        .map(|item| {
+            let style = match *item == state.playback_order.to_string() {
+                true => Style::default()
+                    .add_modifier(Modifier::UNDERLINED),
+                _ => Style::default(),
+            };
+
+            Span::from(item).style(style)
+        })
+        .collect();
+
+    let list = view_utility::create_list(rows, highlight);
+    frame.render_stateful_widget(list.block(settings), right_top, &mut list_state);
+
+    // Search Section
+    if state.is_searching {
+        frame.render_widget(Clear, right);
+        Paragraph::new(state.keyword.as_str())
+            .block(
+                Block::bordered()
+                    .fg(Color::Green)
+                    .border_type(BorderType::Rounded)
+                    .padding(Padding::uniform(1))
+                    .title("SEARCH"),
+            )
+            .render(right, frame.buffer_mut());
+    }
 
     // Volume Section
     if state.is_adjusting {
@@ -148,27 +194,23 @@ pub(crate) fn render(
     }
 
     // Player Section
-    let player_color = if is_playing {
-        CUSTOM_LABEL_COLOR
-    } else {
-        Color::Gray
+    let player_color = match is_playing {
+        true => CUSTOM_LABEL_COLOR,
+        false => Color::Gray,
     };
+
     let mut index = 8; // Point at something on startup.
 
     if let Some(current_index) = state.current_track_index {
         index = current_index;
     }
 
-    if let Some(music) = state.musics.get(index) {
-        let elapsed_label = Span::styled(
-            format!("{}", position.as_secs()),
-            Style::new().italic().bold().fg(player_color),
-        );
+    if let Some(music) = state.tracks.get(index) {
+        let progress_bar_style = Style::new().italic().bold().fg(player_color);
+        let elapsed_label = Span::styled(format!("{}", position.as_secs()), progress_bar_style);
 
-        let total_label = Span::styled(
-            format!(" {}", music.length.to_string()),
-            Style::new().italic().bold().fg(player_color),
-        );
+        let total_label =
+            Span::styled(format!(" {}", music.length.to_string()), progress_bar_style);
 
         let total_time = Paragraph::new(total_label).block(total_time_block);
         let elapsed_time = Paragraph::new(elapsed_label)
