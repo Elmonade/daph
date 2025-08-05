@@ -24,6 +24,9 @@ mod playback;
 mod utility;
 mod view;
 
+// TODO: Read the following variables from the config file.
+// Could include the previous state of the player too.
+// e.g. playback order and volume
 const PATH: &str = "/home/jello/Media/audio";
 const SEEK_DISTANCE: usize = 5;
 const VOLUME_STEP: f32 = 0.1;
@@ -47,6 +50,16 @@ struct PlayerState {
     playback_order: Order,
 }
 
+// PlayerState is configurable.
+impl Configure for PlayerState {}
+
+trait Configure {
+    fn init() -> PlayerState {
+        todo!();
+    }
+}
+
+// In case no config file is found use the default settings.
 impl Default for PlayerState {
     fn default() -> Self {
         let (tx, _rx) = mpsc::channel::<Command>();
@@ -140,7 +153,14 @@ impl Iterator for Order {
 
 fn main() -> Result<()> {
     env_logger::init();
-    let mut state = PlayerState::default();
+    let mut state:PlayerState;
+
+    if true {
+        state = PlayerState::default();
+    } else {
+        state = PlayerState::init();
+    }
+
     state.table_state.select_first();
     state.table_state.select_first_column();
     state.list_state.select_first();
