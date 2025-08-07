@@ -71,9 +71,7 @@ pub(crate) fn order_by(new: &Order, old: &Order, tracks: &mut [Audio]) {
 }
 
 fn order_tracks(tracks: &mut [Audio]) {
-    tracks.sort_by(|a, b| {
-        a.name.to_lowercase().cmp(&b.name.to_lowercase())
-    });
+    tracks.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
 }
 
 fn order_artist(tracks: &mut [Audio]) {
@@ -88,9 +86,7 @@ fn order_artist(tracks: &mut [Audio]) {
     });
 }
 
-fn order_album(tracks: &mut [Audio]) {
-    return;
-}
+fn order_album(_tracks: &mut [Audio]) {}
 
 fn order_shuffle(tracks: &mut [Audio]) {
     // Fisher-Yate Algorithm

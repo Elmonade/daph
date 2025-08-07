@@ -100,7 +100,7 @@ pub(crate) fn render(
 
     let table = view_utility::create_table(&state.tracks);
     let dolphin =
-        Paragraph::new(NumberDrawer::draw(&"bird")).block(Block::default().padding(Padding {
+        Paragraph::new(NumberDrawer::draw("bird")).block(Block::default().padding(Padding {
             left: (20),
             right: (0),
             top: (20),
@@ -210,7 +210,7 @@ pub(crate) fn render(
         let elapsed_label = Span::styled(format!("{}", position.as_secs()), progress_bar_style);
 
         let total_label =
-            Span::styled(format!(" {}", music.length.to_string()), progress_bar_style);
+            Span::styled(format!(" {}", music.length), progress_bar_style);
 
         let total_time = Paragraph::new(total_label).block(total_time_block);
         let elapsed_time = Paragraph::new(elapsed_label)

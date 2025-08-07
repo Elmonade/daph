@@ -8,8 +8,10 @@ use crate::playback::SinkState;
 use crate::utility::load_audio;
 use ratatui::widgets::ListState;
 use ratatui::widgets::TableState;
+use std::fs;
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::{fs, usize};
+
+const DEFAULT_SEEK_DISTANCE: usize = 5;
 
 pub(crate) struct PlayerState {
     pub tracks: Vec<Audio>,
@@ -28,10 +30,11 @@ pub(crate) struct PlayerState {
     pub iteration_count: usize,
     pub volume: f32,
     pub playback_order: Order,
+    pub seek_distance: usize,
 }
 
 impl PlayerState {
-    fn init(track_path: PathBuf) -> Self {
+    fn init(track_path: PathBuf, seek_distance: usize) -> Self {
         let (tx, _rx) = mpsc::channel::<Command>();
         let (_tx, sink_rx) = mpsc::channel::<SinkState>();
         let (number_of_tracks, tracks) = load_audio(track_path);
@@ -52,6 +55,7 @@ impl PlayerState {
             iteration_count: 0,
             volume: 1.0,
             playback_order: Order::Artist,
+            seek_distance,
         }
     }
 
@@ -69,7 +73,7 @@ impl PlayerState {
 impl Configure for PlayerState {
     fn configured(path: PathBuf) -> PlayerState {
         let config = PlayerState::load_config(&path);
-        PlayerState::init(config.path)
+        PlayerState::init(config.path, config.seek_distance)
     }
 }
 
@@ -81,6 +85,6 @@ pub(crate) trait Configure {
 impl Default for PlayerState {
     fn default() -> Self {
         let path: PathBuf = home_dir().unwrap().join("Music");
-        PlayerState::init(path)
+        PlayerState::init(path, DEFAULT_SEEK_DISTANCE)
     }
 }

@@ -19,10 +19,7 @@ mod state;
 mod utility;
 mod view;
 
-// TODO: Read the following variables from the config file.
-// Could include the previous state of the player too.
-// e.g. playback order, volume, colorscheme...
-const SEEK_DISTANCE: usize = 5;
+// TODO: This shoud be inside state.rs
 const VOLUME_STEP: f32 = 0.1;
 
 #[derive(Deserialize)]
@@ -324,18 +321,15 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
             '<' => {
                 state
                     .tx
-                    .send(Command::Backward(SEEK_DISTANCE))
+                    .send(Command::Backward(state.seek_distance))
                     .unwrap_or(());
             }
-            '>' => match state.current_track_index {
-                Some(index) => {
-                    let length = state.tracks[index].length;
-                    state
-                        .tx
-                        .send(Command::Forward(SEEK_DISTANCE, length as usize))
-                        .unwrap_or(());
-                }
-                _ => (),
+            '>' => if let Some(index) = state.current_track_index {
+                let length = state.tracks[index].length;
+                state
+                    .tx
+                    .send(Command::Forward(state.seek_distance, length as usize))
+                    .unwrap_or(());
             },
             'K' => {
                 state.is_adjusting = true;
