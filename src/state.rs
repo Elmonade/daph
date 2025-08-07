@@ -2,13 +2,13 @@ use crate::Audio;
 use crate::Command;
 use crate::Config;
 use crate::Order;
-use crate::PathBuf;
-use crate::home_dir;
 use crate::playback::SinkState;
 use crate::utility::load_audio;
 use ratatui::widgets::ListState;
 use ratatui::widgets::TableState;
+use std::env::home_dir;
 use std::fs;
+use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 
 const DEFAULT_SEEK_DISTANCE: usize = 5;
@@ -20,7 +20,7 @@ pub(crate) struct PlayerState {
     pub is_configuring: bool,
     pub keyword: String,
     pub current_track_index: Option<usize>,
-    pub(crate) table_state: TableState,
+    pub table_state: TableState,
     pub list_state: ListState,
     pub tx: Sender<Command>,
     pub sink_rx: Receiver<SinkState>,

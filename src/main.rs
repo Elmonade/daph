@@ -1,6 +1,7 @@
 use crate::fuzzy_search::search;
-use crate::state::PlayerState;
+use crate::order::Order;
 use crate::state::Configure;
+use crate::state::PlayerState;
 use crate::utility::order_by;
 use crate::utility::play_new_track;
 use crate::view::render;
@@ -9,7 +10,6 @@ use crossterm::event::{self, Event, KeyEvent};
 use ratatui::DefaultTerminal;
 use serde::Deserialize;
 use std::env::home_dir;
-use std::fmt::Display;
 use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::time::Duration;
@@ -18,6 +18,7 @@ mod playback;
 mod state;
 mod utility;
 mod view;
+mod order;
 
 // TODO: This shoud be inside state.rs
 const VOLUME_STEP: f32 = 0.1;
@@ -55,49 +56,10 @@ enum Action {
     Escape,
 }
 
-// TODO: Anything involving Order is just horrible code. Refactor.
-enum Order {
-    Shuffle,
-    Album,
-    Artist,
-    Track,
-}
-
-impl PartialEq for Order {
-    fn eq(&self, other: &Self) -> bool {
-        self.to_string() == other.to_string()
-    }
-}
-
-impl Display for Order {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Order::Shuffle => write!(f, "Shuffle"),
-            Order::Album => write!(f, "Album"),
-            Order::Artist => write!(f, "Artist"),
-            Order::Track => write!(f, "Track"),
-        }
-    }
-}
-
-impl Iterator for Order {
-    type Item = Order;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Order::Shuffle => Some(Order::Album),
-            Order::Album => Some(Order::Artist),
-            Order::Artist => Some(Order::Track),
-            Order::Track => Some(Order::Shuffle),
-        }
-    }
-}
-
 fn main() -> Result<()> {
     env_logger::init();
 
     let config_path = home_dir().unwrap().join(".config").join("daph.toml");
-
     let mut state = if config_path.exists() {
         PlayerState::configured(config_path)
     } else {
@@ -324,13 +286,15 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                     .send(Command::Backward(state.seek_distance))
                     .unwrap_or(());
             }
-            '>' => if let Some(index) = state.current_track_index {
-                let length = state.tracks[index].length;
-                state
-                    .tx
-                    .send(Command::Forward(state.seek_distance, length as usize))
-                    .unwrap_or(());
-            },
+            '>' => {
+                if let Some(index) = state.current_track_index {
+                    let length = state.tracks[index].length;
+                    state
+                        .tx
+                        .send(Command::Forward(state.seek_distance, length as usize))
+                        .unwrap_or(());
+                }
+            }
             'K' => {
                 state.is_adjusting = true;
                 state.iteration_count = 0;
