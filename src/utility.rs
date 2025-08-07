@@ -1,6 +1,4 @@
 use super::*;
-use crate::PATH;
-use log::{info, warn};
 use rand::Rng;
 use walkdir::WalkDir;
 
@@ -9,9 +7,9 @@ use lofty::read_from_path;
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::tag::Accessor;
 
-pub(crate) fn load_audio() -> (usize, Vec<Audio>) {
+pub(crate) fn load_audio(path: PathBuf) -> (usize, Vec<Audio>) {
     let mut tracks = Vec::new();
-    for entry in WalkDir::new(PATH) {
+    for entry in WalkDir::new(path) {
         match entry {
             Ok(entry) => {
                 if let Some(extension) = entry.path().extension() {
@@ -73,9 +71,7 @@ pub(crate) fn order_by(new: &Order, old: &Order, tracks: &mut [Audio]) {
 }
 
 fn order_tracks(tracks: &mut [Audio]) {
-    tracks.sort_by(|a, b| {
-        a.name.to_lowercase().cmp(&b.name.to_lowercase())
-    });
+    tracks.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
 }
 
 fn order_artist(tracks: &mut [Audio]) {
@@ -90,9 +86,7 @@ fn order_artist(tracks: &mut [Audio]) {
     });
 }
 
-fn order_album(tracks: &mut [Audio]) {
-    return;
-}
+fn order_album(_tracks: &mut [Audio]) {}
 
 fn order_shuffle(tracks: &mut [Audio]) {
     // Fisher-Yate Algorithm

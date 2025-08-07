@@ -1,76 +1,32 @@
-use std::fmt::Display;
-use std::path::PathBuf;
-use std::result::Result::Ok;
-use std::sync::mpsc::{self, Receiver, Sender};
-use std::time::Duration;
-use std::usize;
-
-use ratatui::DefaultTerminal;
-use ratatui::widgets::ListState;
-use ratatui::widgets::TableState;
-
-use color_eyre::eyre::Result;
-use crossterm::event::{self, Event, KeyEvent};
-
 use crate::fuzzy_search::search;
-use crate::utility::load_audio;
+use crate::order::Order;
+use crate::state::Configure;
+use crate::state::PlayerState;
 use crate::utility::order_by;
 use crate::utility::play_new_track;
 use crate::view::render;
-use playback::SinkState;
-
+use color_eyre::eyre::Result;
+use crossterm::event::{self, Event, KeyEvent};
+use ratatui::DefaultTerminal;
+use serde::Deserialize;
+use std::env::home_dir;
+use std::path::PathBuf;
+use std::result::Result::Ok;
+use std::time::Duration;
 mod fuzzy_search;
 mod playback;
+mod state;
 mod utility;
 mod view;
+mod order;
 
-const PATH: &str = "/home/jello/Media/audio";
-const SEEK_DISTANCE: usize = 5;
+// TODO: This shoud be inside state.rs
 const VOLUME_STEP: f32 = 0.1;
 
-struct PlayerState {
-    tracks: Vec<Audio>,
-    is_searching: bool,
-    is_adjusting: bool,
-    is_configuring: bool,
-    keyword: String,
-    current_track_index: Option<usize>,
-    table_state: TableState,
-    list_state: ListState,
-    tx: Sender<Command>,
-    sink_rx: Receiver<SinkState>,
-    number_of_tracks: usize,
-    _sink_state: Option<SinkState>,
-    matched_tracks: Vec<Audio>,
-    iteration_count: usize,
-    volume: f32,
-    playback_order: Order,
-}
-
-impl Default for PlayerState {
-    fn default() -> Self {
-        let (tx, _rx) = mpsc::channel::<Command>();
-        let (_tx, sink_rx) = mpsc::channel::<SinkState>();
-        let (number_of_tracks, tracks) = load_audio();
-        PlayerState {
-            tracks,
-            number_of_tracks,
-            is_searching: false,
-            is_adjusting: false,
-            is_configuring: false,
-            keyword: String::new(),
-            current_track_index: None,
-            table_state: TableState::default(),
-            list_state: ListState::default(),
-            tx,
-            sink_rx,
-            _sink_state: None,
-            matched_tracks: Vec::new(),
-            iteration_count: 0,
-            volume: 1.0,
-            playback_order: Order::Artist,
-        }
-    }
+#[derive(Deserialize)]
+struct Config {
+    path: PathBuf,
+    seek_distance: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -100,47 +56,16 @@ enum Action {
     Escape,
 }
 
-// TODO: Anything involving Order is just horrible code. Refactor.
-enum Order {
-    Shuffle,
-    Album,
-    Artist,
-    Track,
-}
-
-impl PartialEq for Order {
-    fn eq(&self, other: &Self) -> bool {
-        self.to_string() == other.to_string()
-    }
-}
-
-impl Display for Order {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Order::Shuffle => write!(f, "Shuffle"),
-            Order::Album => write!(f, "Album"),
-            Order::Artist => write!(f, "Artist"),
-            Order::Track => write!(f, "Track"),
-        }
-    }
-}
-
-impl Iterator for Order {
-    type Item = Order;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Order::Shuffle => Some(Order::Album),
-            Order::Album => Some(Order::Artist),
-            Order::Artist => Some(Order::Track),
-            Order::Track => Some(Order::Shuffle),
-        }
-    }
-}
-
 fn main() -> Result<()> {
     env_logger::init();
-    let mut state = PlayerState::default();
+
+    let config_path = home_dir().unwrap().join(".config").join("daph.toml");
+    let mut state = if config_path.exists() {
+        PlayerState::configured(config_path)
+    } else {
+        PlayerState::default()
+    };
+
     state.table_state.select_first();
     state.table_state.select_first_column();
     state.list_state.select_first();
@@ -358,19 +283,18 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
             '<' => {
                 state
                     .tx
-                    .send(Command::Backward(SEEK_DISTANCE))
+                    .send(Command::Backward(state.seek_distance))
                     .unwrap_or(());
             }
-            '>' => match state.current_track_index {
-                Some(index) => {
+            '>' => {
+                if let Some(index) = state.current_track_index {
                     let length = state.tracks[index].length;
                     state
                         .tx
-                        .send(Command::Forward(SEEK_DISTANCE, length as usize))
+                        .send(Command::Forward(state.seek_distance, length as usize))
                         .unwrap_or(());
                 }
-                _ => (),
-            },
+            }
             'K' => {
                 state.is_adjusting = true;
                 state.iteration_count = 0;

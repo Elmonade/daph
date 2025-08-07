@@ -75,7 +75,8 @@ pub(crate) fn create_table<'a>(tracks: &'a [Audio]) -> Table<'a> {
         Constraint::Percentage(30),
         Constraint::Percentage(20),
     ];
-    let table = Table::new(rows, widths)
+    
+    Table::new(rows, widths)
         //.footer(footer.italic())
         //.style(Color::White)
         //.row_highlight_style(Style::new().on_black().bold())
@@ -84,16 +85,15 @@ pub(crate) fn create_table<'a>(tracks: &'a [Audio]) -> Table<'a> {
         .header(header)
         .column_spacing(1)
         .row_highlight_style(Style::new().fg(Color::Green))
-        .highlight_symbol("  -  ");
-    table
+        .highlight_symbol("  -  ")
 }
 
 pub(crate) fn create_list(rows: Vec<Span>, highlight: Style) -> List {
-    let list = List::new(rows)
+    
+    List::new(rows)
         .highlight_style(highlight)
         .highlight_symbol("  ")
-        .repeat_highlight_symbol(true);
-    list
+        .repeat_highlight_symbol(true)
 }
 
 pub(crate) fn center(area: Rect, horizontal: Constraint, vertical: Constraint) -> Rect {

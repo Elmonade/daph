@@ -2,7 +2,7 @@ use rodio::{Decoder, OutputStream, Sink};
 use std::{
     fs::File,
     io::BufReader,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::mpsc,
     thread,
     time::{self, Duration},
@@ -51,9 +51,10 @@ pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
                     volume: sink.volume(),
                 };
 
+                current_track_finished = false;
                 state_tx
-                    .send(sink_state)
-                    .unwrap_or(current_track_finished = false);
+                .send(sink_state)
+                .unwrap_or(());
 
                 was_playing = is_playing;
                 thread::sleep(time::Duration::from_millis(100));
@@ -115,7 +116,7 @@ fn new_song(sink: &Sink, path: &PathBuf) {
     }
 }
 
-fn play_pause(sink: &Sink, _path: &PathBuf) {
+fn play_pause(sink: &Sink, _path: &Path) {
     match sink.is_paused() {
         false => {
             sink.pause();
@@ -128,12 +129,9 @@ fn play_pause(sink: &Sink, _path: &PathBuf) {
 
 fn seek_forward(sink: &Sink, distance: usize, length: usize) {
     let position = sink.get_pos();
-    match (position.as_secs() + distance as u64) < length as u64 {
-        true => {
-            let seek_to = sink.get_pos() + Duration::new(distance as u64, 0);
-            _ = sink.try_seek(seek_to);
-        }
-        false => (),
+    if (position.as_secs() + distance as u64) < length as u64 {
+        let seek_to = sink.get_pos() + Duration::new(distance as u64, 0);
+        _ = sink.try_seek(seek_to);
     }
 }
 
