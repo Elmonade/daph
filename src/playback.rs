@@ -57,7 +57,7 @@ pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
                 .unwrap_or(());
 
                 was_playing = is_playing;
-                thread::sleep(time::Duration::from_millis(100));
+                thread::sleep(time::Duration::from_millis(65));
             }
         });
     (command_tx, state_rx)

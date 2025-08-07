@@ -14,11 +14,11 @@ use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::time::Duration;
 mod fuzzy_search;
+mod order;
 mod playback;
 mod state;
 mod utility;
 mod view;
-mod order;
 
 // TODO: This shoud be inside state.rs
 const VOLUME_STEP: f32 = 0.1;
