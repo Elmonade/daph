@@ -1,9 +1,10 @@
+use std::env::home_dir;
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Duration;
-use std::usize;
+use std::{fs, usize};
 
 use ratatui::DefaultTerminal;
 use ratatui::widgets::ListState;
@@ -11,6 +12,7 @@ use ratatui::widgets::TableState;
 
 use color_eyre::eyre::Result;
 use crossterm::event::{self, Event, KeyEvent};
+use serde::Deserialize;
 
 use crate::fuzzy_search::search;
 use crate::utility::load_audio;
@@ -26,8 +28,7 @@ mod view;
 
 // TODO: Read the following variables from the config file.
 // Could include the previous state of the player too.
-// e.g. playback order and volume
-const PATH: &str = "/home/jello/Media/audio";
+// e.g. playback order, volume, colorscheme...
 const SEEK_DISTANCE: usize = 5;
 const VOLUME_STEP: f32 = 0.1;
 
@@ -50,21 +51,17 @@ struct PlayerState {
     playback_order: Order,
 }
 
-// PlayerState is configurable.
-impl Configure for PlayerState {}
-
-trait Configure {
-    fn init() -> PlayerState {
-        todo!();
-    }
+#[derive(Deserialize)]
+struct Config {
+    path: PathBuf,
+    seek_distance: usize,
 }
 
-// In case no config file is found use the default settings.
-impl Default for PlayerState {
-    fn default() -> Self {
+impl PlayerState {
+    fn init(track_path: PathBuf) -> Self {
         let (tx, _rx) = mpsc::channel::<Command>();
         let (_tx, sink_rx) = mpsc::channel::<SinkState>();
-        let (number_of_tracks, tracks) = load_audio();
+        let (number_of_tracks, tracks) = load_audio(track_path);
         PlayerState {
             tracks,
             number_of_tracks,
@@ -83,6 +80,32 @@ impl Default for PlayerState {
             volume: 1.0,
             playback_order: Order::Artist,
         }
+    }
+
+    fn load_config(path: &PathBuf) -> Config {
+        let file = fs::read(path)
+            .expect("Could not read the config file.")
+            .iter()
+            .map(|c| *c as char)
+            .collect::<String>();
+        toml::from_str(&file).expect("Not properly formatted")
+    }
+}
+
+// PlayerState has config file.
+impl Configure for PlayerState{}
+trait Configure {
+    fn configured(path: PathBuf) -> PlayerState {
+        let config = PlayerState::load_config(&path);
+        PlayerState::init(config.path)
+    }
+}
+
+// In case no config file is found use the default settings.
+impl Default for PlayerState {
+    fn default() -> Self {
+        let path: PathBuf = home_dir().unwrap().join("Music");
+        PlayerState::init(path)
     }
 }
 
@@ -153,13 +176,14 @@ impl Iterator for Order {
 
 fn main() -> Result<()> {
     env_logger::init();
-    let mut state:PlayerState;
 
-    if true {
-        state = PlayerState::default();
+    let config_path = home_dir().unwrap().join(".config").join("daph.toml");
+
+    let mut state = if config_path.exists() {
+        PlayerState::configured(config_path)
     } else {
-        state = PlayerState::init();
-    }
+        PlayerState::default()
+    };
 
     state.table_state.select_first();
     state.table_state.select_first_column();

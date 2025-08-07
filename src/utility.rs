@@ -1,6 +1,4 @@
 use super::*;
-use crate::PATH;
-use log::{info, warn};
 use rand::Rng;
 use walkdir::WalkDir;
 
@@ -9,9 +7,9 @@ use lofty::read_from_path;
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::tag::Accessor;
 
-pub(crate) fn load_audio() -> (usize, Vec<Audio>) {
+pub(crate) fn load_audio(path: PathBuf) -> (usize, Vec<Audio>) {
     let mut tracks = Vec::new();
-    for entry in WalkDir::new(PATH) {
+    for entry in WalkDir::new(path) {
         match entry {
             Ok(entry) => {
                 if let Some(extension) = entry.path().extension() {
