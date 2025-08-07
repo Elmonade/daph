@@ -1,28 +1,21 @@
+use crate::fuzzy_search::search;
+use crate::state::PlayerState;
+use crate::state::Configure;
+use crate::utility::order_by;
+use crate::utility::play_new_track;
+use crate::view::render;
+use color_eyre::eyre::Result;
+use crossterm::event::{self, Event, KeyEvent};
+use ratatui::DefaultTerminal;
+use serde::Deserialize;
 use std::env::home_dir;
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::result::Result::Ok;
-use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Duration;
-use std::{fs, usize};
-
-use ratatui::DefaultTerminal;
-use ratatui::widgets::ListState;
-use ratatui::widgets::TableState;
-
-use color_eyre::eyre::Result;
-use crossterm::event::{self, Event, KeyEvent};
-use serde::Deserialize;
-
-use crate::fuzzy_search::search;
-use crate::utility::load_audio;
-use crate::utility::order_by;
-use crate::utility::play_new_track;
-use crate::view::render;
-use playback::SinkState;
-
 mod fuzzy_search;
 mod playback;
+mod state;
 mod utility;
 mod view;
 
@@ -32,81 +25,10 @@ mod view;
 const SEEK_DISTANCE: usize = 5;
 const VOLUME_STEP: f32 = 0.1;
 
-struct PlayerState {
-    tracks: Vec<Audio>,
-    is_searching: bool,
-    is_adjusting: bool,
-    is_configuring: bool,
-    keyword: String,
-    current_track_index: Option<usize>,
-    table_state: TableState,
-    list_state: ListState,
-    tx: Sender<Command>,
-    sink_rx: Receiver<SinkState>,
-    number_of_tracks: usize,
-    _sink_state: Option<SinkState>,
-    matched_tracks: Vec<Audio>,
-    iteration_count: usize,
-    volume: f32,
-    playback_order: Order,
-}
-
 #[derive(Deserialize)]
 struct Config {
     path: PathBuf,
     seek_distance: usize,
-}
-
-impl PlayerState {
-    fn init(track_path: PathBuf) -> Self {
-        let (tx, _rx) = mpsc::channel::<Command>();
-        let (_tx, sink_rx) = mpsc::channel::<SinkState>();
-        let (number_of_tracks, tracks) = load_audio(track_path);
-        PlayerState {
-            tracks,
-            number_of_tracks,
-            is_searching: false,
-            is_adjusting: false,
-            is_configuring: false,
-            keyword: String::new(),
-            current_track_index: None,
-            table_state: TableState::default(),
-            list_state: ListState::default(),
-            tx,
-            sink_rx,
-            _sink_state: None,
-            matched_tracks: Vec::new(),
-            iteration_count: 0,
-            volume: 1.0,
-            playback_order: Order::Artist,
-        }
-    }
-
-    fn load_config(path: &PathBuf) -> Config {
-        let file = fs::read(path)
-            .expect("Could not read the config file.")
-            .iter()
-            .map(|c| *c as char)
-            .collect::<String>();
-        toml::from_str(&file).expect("Not properly formatted")
-    }
-}
-
-// PlayerState has config file.
-impl Configure for PlayerState{}
-trait Configure {
-    fn configured(path: PathBuf) -> PlayerState {
-        let config = PlayerState::load_config(&path);
-        PlayerState::init(config.path)
-    }
-}
-
-// In case no config file is found use the default settings.
-impl Default for PlayerState {
-    fn default() -> Self {
-        let path: PathBuf = home_dir().unwrap().join("Music");
-        PlayerState::init(path)
-    }
 }
 
 #[derive(Debug, Clone)]
