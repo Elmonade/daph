@@ -96,7 +96,7 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
 
         // TODO: Update render. The state.volume is redundant.
         // Render
-        terminal.draw(|f| render(f, state, is_playing, position, state.volume))?;
+        terminal.draw(|f| render(f, state, is_playing, position))?;
 
         // Input - Non-blocking poll. Raw Event will block this thread.
         // Wait up to 50 ms.
@@ -134,11 +134,14 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
         }
         std::thread::sleep(std::time::Duration::from_millis(15));
 
+        // TODO: If we integrate the seek window to this
+        // seek action followed by immediate volume adjustment will delay to seek.
         // Clear volume control window after 20*(15..65)msec
         state.iteration_count += 1;
         if state.iteration_count % 20 == 0 {
             state.is_adjusting = false;
-            state.iteration_count = 0; // Could be used with other windows with different interval.
+            state.iteration_count = 0;
+
         }
     }
     Ok(())

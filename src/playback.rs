@@ -52,9 +52,7 @@ pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
                 };
 
                 current_track_finished = false;
-                state_tx
-                .send(sink_state)
-                .unwrap_or(());
+                state_tx.send(sink_state).unwrap_or(());
 
                 was_playing = is_playing;
                 thread::sleep(time::Duration::from_millis(65));
@@ -127,6 +125,13 @@ fn play_pause(sink: &Sink, _path: &Path) {
     }
 }
 
+fn seek(sink: &Sink, distance: isize, length: usize) {
+    let position = sink.get_pos();
+    if ((position.as_secs() + distance as u64) < length as u64)
+        && position.as_secs() > distance as u64
+    {}
+}
+
 fn seek_forward(sink: &Sink, distance: usize, length: usize) {
     let position = sink.get_pos();
     if (position.as_secs() + distance as u64) < length as u64 {
@@ -137,7 +142,7 @@ fn seek_forward(sink: &Sink, distance: usize, length: usize) {
 
 fn seek_backward(sink: &Sink, distance: usize) {
     let position = sink.get_pos();
-    if position.as_secs() > 10 {
+    if position.as_secs() > distance as u64 {
         let seek_to = position - Duration::new(distance as u64, 0);
         _ = sink.try_seek(seek_to);
         return;

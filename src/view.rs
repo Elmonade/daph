@@ -28,13 +28,7 @@ const CUSTOM_LABEL_COLOR: Color = tailwind::SKY.c200;
 const BY_COLOR: Color = tailwind::RED.c300;
 const GAUGE_COLOR: Color = tailwind::GREEN.c800;
 
-pub(crate) fn render(
-    frame: &mut Frame,
-    state: &PlayerState,
-    is_playing: bool,
-    position: Duration,
-    volume: f32,
-) {
+pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, position: Duration) {
     let [mut left, mut right] =
         Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(25)])
             .margin(0)
@@ -133,8 +127,7 @@ pub(crate) fn render(
         .iter()
         .map(|item| {
             let style = match *item == state.playback_order.to_string() {
-                true => Style::default()
-                    .add_modifier(Modifier::UNDERLINED),
+                true => Style::default().add_modifier(Modifier::UNDERLINED),
                 _ => Style::default(),
             };
 
@@ -161,7 +154,7 @@ pub(crate) fn render(
 
     // Volume Section
     if state.is_adjusting {
-        let volume = (volume * 10.0) as u32;
+        let volume = (state.volume * 10.0) as u32;
         let mut string_volume = volume.to_string();
         if volume < 10 {
             string_volume = format!("0{volume}")
@@ -209,8 +202,7 @@ pub(crate) fn render(
         let progress_bar_style = Style::new().italic().bold().fg(player_color);
         let elapsed_label = Span::styled(format!("{}", position.as_secs()), progress_bar_style);
 
-        let total_label =
-            Span::styled(format!(" {}", music.length), progress_bar_style);
+        let total_label = Span::styled(format!(" {}", music.length), progress_bar_style);
 
         let total_time = Paragraph::new(total_label).block(total_time_block);
         let elapsed_time = Paragraph::new(elapsed_label)
