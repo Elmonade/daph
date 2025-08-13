@@ -85,14 +85,11 @@ fn main() -> Result<()> {
 
 fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
     loop {
-        // sink_rx.recv_timeout + playback::sleep(30) = 60ms up until this point
-        // This can be further adjusted but I believe it doesn't need to be os specific 
         if let Ok(sink) = state.sink_rx.recv_timeout(Duration::from_millis(30)) {
             // Render
-            terminal.draw(|f| render(f, state, sink.is_playing, sink.position))?;
+            terminal.draw(|f| render(f, state, &sink))?;
 
-            // Input - Non-blocking poll. Raw Event will block this thread.
-            // Wait up to 50 ms.
+            // Input
             if event::poll(std::time::Duration::from_millis(16))? {
                 if let Event::Key(key) = event::read()? {
                     if state.is_searching {
@@ -126,10 +123,11 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
                 }
             }
 
-            // TODO: Due to blocking recv, this calculation needs to be updated.
-            // Clear volume control window after 20*(15..65)msec
+            // If we assume two threads are perfectly in sync(probably impossible),
+            // in total, one iteration should take 46ms when no button is pressed.
+            // 2s / 46 = ~43
             state.iteration_count += 1;
-            if state.iteration_count % 60 == 0 {
+            if state.iteration_count % 43 == 0 {
                 state.is_adjusting = false;
                 state.iteration_count = 0;
             }
