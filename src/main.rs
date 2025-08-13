@@ -85,7 +85,7 @@ fn main() -> Result<()> {
 
 fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
     loop {
-        if let Ok(sink) = state.sink_rx.recv_timeout(Duration::from_millis(30)) {
+        if let Ok(sink) = state.sink_rx.recv_timeout(Duration::from_millis(33)) {
             // Render
             terminal.draw(|f| render(f, state, &sink))?;
 
@@ -125,9 +125,9 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
 
             // If we assume two threads are perfectly in sync(probably impossible),
             // in total, one iteration should take 46ms when no button is pressed.
-            // 2s / 46 = ~43
+            // 2s / 49 = ~41
             state.iteration_count += 1;
-            if state.iteration_count % 43 == 0 {
+            if state.iteration_count % 41 == 0 {
                 state.is_adjusting = false;
                 state.iteration_count = 0;
             }
