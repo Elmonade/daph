@@ -7,6 +7,7 @@ use crate::utility::play_new_track;
 use crate::view::render;
 use color_eyre::eyre::Result;
 use crossterm::event::{self, Event, KeyEvent};
+use playback::SinkState;
 use ratatui::DefaultTerminal;
 use serde::Deserialize;
 use std::env::home_dir;
@@ -83,65 +84,55 @@ fn main() -> Result<()> {
 }
 
 fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
-    let mut is_playing = false;
-    let mut current_track_finished = false;
-    let mut position = Duration::new(0, 0);
     loop {
-        if let Ok(sink) = state.sink_rx.try_recv() {
-            is_playing = sink.is_playing;
-            current_track_finished = sink.current_track_finished;
-            position = sink.position;
-            state.volume = sink.volume;
-        }
+        // sink_rx.recv_timeout + playback::sleep(30) = 60ms up until this point
+        // This can be further adjusted but I believe it doesn't need to be os specific 
+        if let Ok(sink) = state.sink_rx.recv_timeout(Duration::from_millis(30)) {
+            // Render
+            terminal.draw(|f| render(f, state, sink.is_playing, sink.position))?;
 
-        // TODO: Update render. The state.volume is redundant.
-        // Render
-        terminal.draw(|f| render(f, state, is_playing, position))?;
-
-        // Input - Non-blocking poll. Raw Event will block this thread.
-        // Wait up to 50 ms.
-        if event::poll(std::time::Duration::from_millis(50))? {
-            if let Event::Key(key) = event::read()? {
-                if state.is_searching {
-                    match handle_search(key, state) {
-                        Action::Escape => state.is_searching = false,
-                        Action::Submit => {}
-                        Action::None => {}
-                    }
-                } else if state.is_configuring {
-                    match handle_config(key, state) {
-                        Action::Escape => state.is_configuring = false,
-                        Action::Submit => {}
-                        Action::None => {}
-                    }
-                } else {
-                    match handle_button(key, state) {
-                        Action::Escape => break,
-                        Action::Submit => {}
-                        Action::None => {}
+            // Input - Non-blocking poll. Raw Event will block this thread.
+            // Wait up to 50 ms.
+            if event::poll(std::time::Duration::from_millis(16))? {
+                if let Event::Key(key) = event::read()? {
+                    if state.is_searching {
+                        match handle_search(key, state) {
+                            Action::Escape => state.is_searching = false,
+                            Action::Submit => {}
+                            Action::None => {}
+                        }
+                    } else if state.is_configuring {
+                        match handle_config(key, state) {
+                            Action::Escape => state.is_configuring = false,
+                            Action::Submit => {}
+                            Action::None => {}
+                        }
+                    } else {
+                        match handle_button(key, state) {
+                            Action::Escape => break,
+                            Action::Submit => {}
+                            Action::None => {}
+                        }
                     }
                 }
             }
-        }
 
-        // Auto-Queue
-        if current_track_finished {
-            if let Some(mut index) = state.current_track_index {
-                state.tracks[index].is_playing = false;
-                index = (index + 1) % state.number_of_tracks;
-                play_new_track(index, state);
+            // Auto-Queue
+            if sink.current_track_finished {
+                if let Some(mut index) = state.current_track_index {
+                    state.tracks[index].is_playing = false;
+                    index = (index + 1) % state.number_of_tracks;
+                    play_new_track(index, state);
+                }
             }
-        }
-        std::thread::sleep(std::time::Duration::from_millis(15));
 
-        // TODO: If we integrate the seek window to this
-        // seek action followed by immediate volume adjustment will delay to seek.
-        // Clear volume control window after 20*(15..65)msec
-        state.iteration_count += 1;
-        if state.iteration_count % 20 == 0 {
-            state.is_adjusting = false;
-            state.iteration_count = 0;
-
+            // TODO: Due to blocking recv, this calculation needs to be updated.
+            // Clear volume control window after 20*(15..65)msec
+            state.iteration_count += 1;
+            if state.iteration_count % 60 == 0 {
+                state.is_adjusting = false;
+                state.iteration_count = 0;
+            }
         }
     }
     Ok(())

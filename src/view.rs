@@ -201,9 +201,7 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, p
     if let Some(music) = state.tracks.get(index) {
         let progress_bar_style = Style::new().italic().bold().fg(player_color);
         let elapsed_label = Span::styled(format!("{}", position.as_secs()), progress_bar_style);
-
         let total_label = Span::styled(format!(" {}", music.length), progress_bar_style);
-
         let total_time = Paragraph::new(total_label).block(total_time_block);
         let elapsed_time = Paragraph::new(elapsed_label)
             .block(elapsed_time_block)
@@ -212,6 +210,7 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, is_playing: bool, p
         frame.render_widget(elapsed_time, player_area_left);
         frame.render_widget(total_time, player_area_right);
         let title = view_utility::title_block(&player_color, &music.author, &music.name);
+
         view_utility::render_progress(
             &position,
             progress_bar,

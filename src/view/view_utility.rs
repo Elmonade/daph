@@ -75,7 +75,7 @@ pub(crate) fn create_table<'a>(tracks: &'a [Audio]) -> Table<'a> {
         Constraint::Percentage(30),
         Constraint::Percentage(20),
     ];
-    
+
     Table::new(rows, widths)
         //.footer(footer.italic())
         //.style(Color::White)
@@ -89,7 +89,6 @@ pub(crate) fn create_table<'a>(tracks: &'a [Audio]) -> Table<'a> {
 }
 
 pub(crate) fn create_list(rows: Vec<Span>, highlight: Style) -> List {
-    
     List::new(rows)
         .highlight_style(highlight)
         .highlight_symbol("  ")
