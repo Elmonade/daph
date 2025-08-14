@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::Audio;
-use crate::Order;
+use crate::order::Order;
 use crate::PlayerState;
 use crate::SinkState;
 use number_drawer::NumberDrawer;

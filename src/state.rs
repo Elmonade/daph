@@ -1,7 +1,7 @@
 use crate::Audio;
 use crate::Command;
 use crate::Config;
-use crate::Order;
+use crate::order::Order;
 use crate::playback::SinkState;
 use crate::utility::load_audio;
 use ratatui::widgets::ListState;
