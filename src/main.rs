@@ -59,13 +59,16 @@ enum Action {
 fn main() -> Result<()> {
     env_logger::init();
 
-    let mut state = PlayerState::default();
-    if let Some(path) = home::home_dir() {
+    let mut state = if let Some(path) = home::home_dir() {
         let config_path = path.join(".config").join("daph.toml");
         if config_path.exists() {
-            state = PlayerState::configured(config_path);
+            PlayerState::configured(config_path)
+        } else {
+            PlayerState::default()
         }
-    }
+    } else {
+        PlayerState::default()
+    };
 
     state.table_state.select_first();
     state.table_state.select_first_column();
