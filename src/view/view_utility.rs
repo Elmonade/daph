@@ -43,7 +43,7 @@ pub(crate) fn title_block<'a>(color: &'a Color, author: &'a str, name: &'a str) 
         .fg(*color)
 }
 
-pub(crate) fn create_table<'a>(tracks: &'a [Audio]) -> Table<'a> {
+pub(crate) fn create_table(tracks: &[Audio]) -> Table {
     let header = Row::new(["Song", "Artist", "Duration"])
         .style(Style::new().bold())
         .bottom_margin(1);

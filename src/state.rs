@@ -6,7 +6,6 @@ use crate::playback::SinkState;
 use crate::utility::load_audio;
 use ratatui::widgets::ListState;
 use ratatui::widgets::TableState;
-use std::env::home_dir;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -82,9 +81,12 @@ pub(crate) trait Configure {
 }
 
 // In case no config file is found use the default settings.
+// TODO: Handle the case where you don't find any music in the default path.
 impl Default for PlayerState {
     fn default() -> Self {
-        let path: PathBuf = home_dir().unwrap().join("Music");
-        PlayerState::init(path, DEFAULT_SEEK_DISTANCE)
+        match home::home_dir() {
+            Some(path) => PlayerState::init(path.join("Music"), DEFAULT_SEEK_DISTANCE),
+            None => PlayerState::init(PathBuf::from("/home"), DEFAULT_SEEK_DISTANCE)
+        }
     }
 }

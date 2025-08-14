@@ -125,13 +125,6 @@ fn play_pause(sink: &Sink, _path: &Path) {
     }
 }
 
-fn seek(sink: &Sink, distance: isize, length: usize) {
-    let position = sink.get_pos();
-    if ((position.as_secs() + distance as u64) < length as u64)
-        && position.as_secs() > distance as u64
-    {}
-}
-
 fn seek_forward(sink: &Sink, distance: usize, length: usize) {
     let position = sink.get_pos();
     if (position.as_secs() + distance as u64) < length as u64 {

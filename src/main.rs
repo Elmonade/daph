@@ -10,7 +10,6 @@ use crossterm::event::{self, Event, KeyEvent};
 use playback::SinkState;
 use ratatui::DefaultTerminal;
 use serde::Deserialize;
-use std::env::home_dir;
 use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::time::Duration;
@@ -60,12 +59,13 @@ enum Action {
 fn main() -> Result<()> {
     env_logger::init();
 
-    let config_path = home_dir().unwrap().join(".config").join("daph.toml");
-    let mut state = if config_path.exists() {
-        PlayerState::configured(config_path)
-    } else {
-        PlayerState::default()
-    };
+    let mut state = PlayerState::default();
+    if let Some(path) = home::home_dir() {
+        let config_path = path.join(".config").join("daph.toml");
+        if config_path.exists() {
+            state = PlayerState::configured(config_path);
+        }
+    }
 
     state.table_state.select_first();
     state.table_state.select_first_column();
