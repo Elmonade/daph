@@ -3,6 +3,7 @@ use std::time::Duration;
 use crate::Audio;
 use crate::Order;
 use crate::PlayerState;
+use crate::SinkState;
 use number_drawer::NumberDrawer;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
@@ -28,13 +29,7 @@ const CUSTOM_LABEL_COLOR: Color = tailwind::SKY.c200;
 const BY_COLOR: Color = tailwind::RED.c300;
 const GAUGE_COLOR: Color = tailwind::GREEN.c800;
 
-pub(crate) fn render(
-    frame: &mut Frame,
-    state: &PlayerState,
-    is_playing: bool,
-    position: Duration,
-    volume: f32,
-) {
+pub(crate) fn render(frame: &mut Frame, state: &PlayerState, sink: &SinkState) {
     let [mut left, mut right] =
         Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(25)])
             .margin(0)
@@ -133,8 +128,7 @@ pub(crate) fn render(
         .iter()
         .map(|item| {
             let style = match *item == state.playback_order.to_string() {
-                true => Style::default()
-                    .add_modifier(Modifier::UNDERLINED),
+                true => Style::default().add_modifier(Modifier::UNDERLINED),
                 _ => Style::default(),
             };
 
@@ -161,7 +155,7 @@ pub(crate) fn render(
 
     // Volume Section
     if state.is_adjusting {
-        let volume = (volume * 10.0) as u32;
+        let volume = (sink.volume * 10.0) as u32;
         let mut string_volume = volume.to_string();
         if volume < 10 {
             string_volume = format!("0{volume}")
@@ -194,7 +188,7 @@ pub(crate) fn render(
     }
 
     // Player Section
-    let player_color = match is_playing {
+    let player_color = match sink.is_playing {
         true => CUSTOM_LABEL_COLOR,
         false => Color::Gray,
     };
@@ -207,11 +201,8 @@ pub(crate) fn render(
 
     if let Some(music) = state.tracks.get(index) {
         let progress_bar_style = Style::new().italic().bold().fg(player_color);
-        let elapsed_label = Span::styled(format!("{}", position.as_secs()), progress_bar_style);
-
-        let total_label =
-            Span::styled(format!(" {}", music.length), progress_bar_style);
-
+        let elapsed_label = Span::styled(format!("{}", sink.position.as_secs()), progress_bar_style);
+        let total_label = Span::styled(format!(" {}", music.length), progress_bar_style);
         let total_time = Paragraph::new(total_label).block(total_time_block);
         let elapsed_time = Paragraph::new(elapsed_label)
             .block(elapsed_time_block)
@@ -220,8 +211,9 @@ pub(crate) fn render(
         frame.render_widget(elapsed_time, player_area_left);
         frame.render_widget(total_time, player_area_right);
         let title = view_utility::title_block(&player_color, &music.author, &music.name);
+
         view_utility::render_progress(
-            &position,
+            &sink.position,
             progress_bar,
             frame.buffer_mut(),
             title,

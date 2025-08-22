@@ -43,7 +43,7 @@ pub(crate) fn title_block<'a>(color: &'a Color, author: &'a str, name: &'a str) 
         .fg(*color)
 }
 
-pub(crate) fn create_table<'a>(tracks: &'a [Audio]) -> Table<'a> {
+pub(crate) fn create_table(tracks: &[Audio]) -> Table {
     let header = Row::new(["Song", "Artist", "Duration"])
         .style(Style::new().bold())
         .bottom_margin(1);
@@ -75,7 +75,7 @@ pub(crate) fn create_table<'a>(tracks: &'a [Audio]) -> Table<'a> {
         Constraint::Percentage(30),
         Constraint::Percentage(20),
     ];
-    
+
     Table::new(rows, widths)
         //.footer(footer.italic())
         //.style(Color::White)
@@ -89,7 +89,6 @@ pub(crate) fn create_table<'a>(tracks: &'a [Audio]) -> Table<'a> {
 }
 
 pub(crate) fn create_list(rows: Vec<Span>, highlight: Style) -> List {
-    
     List::new(rows)
         .highlight_style(highlight)
         .highlight_symbol("  ")
