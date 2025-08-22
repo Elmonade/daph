@@ -9,7 +9,6 @@ use color_eyre::eyre::Result;
 use crossterm::event::{self, Event, KeyEvent};
 use playback::SinkState;
 use ratatui::DefaultTerminal;
-use serde::Deserialize;
 use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::time::Duration;
@@ -22,12 +21,6 @@ mod view;
 
 // TODO: This shoud be inside state.rs
 const VOLUME_STEP: f32 = 0.1;
-
-#[derive(Deserialize)]
-struct Config {
-    path: PathBuf,
-    seek_distance: usize,
-}
 
 #[derive(Debug, Clone)]
 struct Audio {
@@ -93,37 +86,37 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
             terminal.draw(|f| render(f, state, &sink))?;
 
             // Input
-            if event::poll(std::time::Duration::from_millis(16))? {
-                if let Event::Key(key) = event::read()? {
-                    if state.is_searching {
-                        match handle_search(key, state) {
-                            Action::Escape => state.is_searching = false,
-                            Action::Submit => {}
-                            Action::None => {}
-                        }
-                    } else if state.is_configuring {
-                        match handle_config(key, state) {
-                            Action::Escape => state.is_configuring = false,
-                            Action::Submit => {}
-                            Action::None => {}
-                        }
-                    } else {
-                        match handle_button(key, state) {
-                            Action::Escape => break,
-                            Action::Submit => {}
-                            Action::None => {}
-                        }
+            if event::poll(std::time::Duration::from_millis(16))?
+                && let Event::Key(key) = event::read()?
+            {
+                if state.is_searching {
+                    match handle_search(key, state) {
+                        Action::Escape => state.is_searching = false,
+                        Action::Submit => {}
+                        Action::None => {}
+                    }
+                } else if state.is_configuring {
+                    match handle_config(key, state) {
+                        Action::Escape => state.is_configuring = false,
+                        Action::Submit => {}
+                        Action::None => {}
+                    }
+                } else {
+                    match handle_button(key, state) {
+                        Action::Escape => break,
+                        Action::Submit => {}
+                        Action::None => {}
                     }
                 }
             }
 
             // Auto-Queue
-            if sink.current_track_finished {
-                if let Some(mut index) = state.current_track_index {
-                    state.tracks[index].is_playing = false;
-                    index = (index + 1) % state.number_of_tracks;
-                    play_new_track(index, state);
-                }
+            if sink.current_track_finished
+                && let Some(mut index) = state.current_track_index
+            {
+                state.tracks[index].is_playing = false;
+                index = (index + 1) % state.number_of_tracks;
+                play_new_track(index, state);
             }
 
             // If we assume two threads are perfectly in sync(probably impossible),
@@ -144,10 +137,10 @@ fn handle_config(key: KeyEvent, state: &mut PlayerState) -> Action {
         event::KeyCode::Tab => state.is_configuring = !state.is_configuring,
         event::KeyCode::Char(char) => match char {
             'j' => {
-                if let Some(selected_index) = state.list_state.selected() {
-                    if selected_index < 3 {
-                        state.list_state.select_next();
-                    }
+                if let Some(selected_index) = state.list_state.selected()
+                    && selected_index < 3
+                {
+                    state.list_state.select_next();
                 }
             }
             'k' => {
@@ -252,10 +245,10 @@ fn handle_button(key: KeyEvent, state: &mut PlayerState) -> Action {
                 }
             }
             'j' => {
-                if let Some(selected_index) = state.table_state.selected() {
-                    if selected_index < state.number_of_tracks - 1 {
-                        state.table_state.select_next();
-                    }
+                if let Some(selected_index) = state.table_state.selected()
+                    && selected_index < state.number_of_tracks - 1
+                {
+                    state.table_state.select_next();
                 }
             }
             'k' => {
