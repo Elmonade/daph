@@ -6,9 +6,6 @@ use crate::utility::order_by;
 use crate::{Action, Command, PlayerState, play_new_track};
 use crossterm::event::{self, KeyEvent};
 
-// TODO: This shoud be inside state.rs
-const VOLUME_STEP: f32 = 0.1;
-
 pub(crate) fn handle_config(key: KeyEvent, state: &mut PlayerState) -> Action {
     match key.code {
         event::KeyCode::Tab => state.is_configuring = !state.is_configuring,
@@ -187,14 +184,14 @@ pub(crate) fn handle_playback(key: KeyEvent, state: &mut PlayerState) -> Action 
                 state.is_adjusting = true;
                 state.iteration_count = 0;
                 if state.volume < 2.0 {
-                    state.tx.send(Command::Volume(VOLUME_STEP)).unwrap_or(());
+                    state.tx.send(Command::Volume(state.volume_step)).unwrap_or(());
                 }
             }
             'J' => {
                 state.is_adjusting = true;
                 state.iteration_count = 0;
                 if state.volume > 0.0 {
-                    state.tx.send(Command::Volume(-VOLUME_STEP)).unwrap_or(());
+                    state.tx.send(Command::Volume(-state.volume_step)).unwrap_or(());
                 }
             }
             _ => {}

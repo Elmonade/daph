@@ -11,6 +11,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 
 const DEFAULT_SEEK_DISTANCE: usize = 5;
+const VOLUME_STEP: f32 = 0.1;
 
 #[derive(Deserialize)]
 struct Config {
@@ -49,6 +50,7 @@ pub(crate) struct PlayerState {
     pub volume: f32,
     pub playback_order: Order,
     pub seek_distance: usize,
+    pub volume_step: f32,
 }
 
 impl PlayerState {
@@ -74,6 +76,7 @@ impl PlayerState {
             volume: 1.0,
             playback_order: Order::Artist,
             seek_distance: config.seek_distance,
+            volume_step: VOLUME_STEP,
         }
     }
 

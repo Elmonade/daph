@@ -20,8 +20,6 @@ mod state;
 mod utility;
 mod view;
 
-const VOLUME_STEP: f32 = 0.1;
-
 #[derive(Debug, Clone)]
 struct Audio {
     is_playing: bool,
