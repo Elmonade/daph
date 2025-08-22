@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use crate::fuzzy_search::search;
 use crate::order::Order;
 use crate::utility::order_by;
-use crate::{play_new_track, Action, Command, PlayerState};
+use crate::{Action, Command, PlayerState, play_new_track};
 use crossterm::event::{self, KeyEvent};
 
 // TODO: This shoud be inside state.rs
@@ -32,25 +32,48 @@ pub(crate) fn handle_config(key: KeyEvent, state: &mut PlayerState) -> Action {
             if let Some(index) = state.list_state.selected() {
                 match index {
                     0 => {
-                        order_by(&Order::Shuffle, &state.playback_order, &mut state.tracks);
-                        state.playback_order = Order::Shuffle;
-                    }
-                    1 => {
-                        order_by(&Order::Album, &state.playback_order, &mut state.tracks);
-                        state.playback_order = Order::Album;
-                    }
-                    2 => {
-                        order_by(&Order::Artist, &state.playback_order, &mut state.tracks);
-                        state.playback_order = Order::Artist;
-                    }
+                        match order_by(&Order::Shuffle, &state.playback_order, &mut state.tracks) {
+                            Some(index) => {
+                                state.current_track_index = Some(index);
 
-                    3 => {
-                        order_by(&Order::Track, &state.playback_order, &mut state.tracks);
-                        state.playback_order = Order::Track;
+                                state.playback_order = Order::Shuffle;
+                            }
+
+                            None => (),
+                        }
                     }
+                    1 => match order_by(&Order::Album, &state.playback_order, &mut state.tracks) {
+                        Some(index) => {
+                            state.current_track_index = Some(index);
+                            state.playback_order = Order::Album;
+                        }
+                        None => (),
+                    },
+                    2 => match order_by(&Order::Artist, &state.playback_order, &mut state.tracks) {
+                        Some(index) => {
+                            state.current_track_index = Some(index);
+                            state.playback_order = Order::Artist;
+                        }
+                        None => (),
+                    },
+
+                    3 => match order_by(&Order::Track, &state.playback_order, &mut state.tracks) {
+                        Some(index) => {
+                            state.current_track_index = Some(index);
+                            state.playback_order = Order::Track;
+                        }
+                        None => (),
+                    },
                     _ => {
-                        order_by(&Order::Shuffle, &state.playback_order, &mut state.tracks);
-                        state.playback_order = Order::Shuffle;
+                        match order_by(&Order::Shuffle, &state.playback_order, &mut state.tracks) {
+                            Some(index) => {
+                                state.current_track_index = Some(index);
+
+                                state.playback_order = Order::Shuffle;
+                            }
+
+                            None => (),
+                        }
                     }
                 }
             }

@@ -1,6 +1,6 @@
 use crate::button_handler::handle_config;
-use crate::button_handler::handle_playback;
 use crate::button_handler::handle_search;
+use crate::button_handler::handle_playback;
 use crate::state::Configure;
 use crate::state::PlayerState;
 use crate::utility::play_new_track;
@@ -9,7 +9,6 @@ use color_eyre::eyre::Result;
 use crossterm::event::{self, Event};
 use playback::SinkState;
 use ratatui::DefaultTerminal;
-use serde::Deserialize;
 use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::time::Duration;
@@ -21,11 +20,7 @@ mod state;
 mod utility;
 mod view;
 
-#[derive(Deserialize)]
-struct Config {
-    path: PathBuf,
-    seek_distance: usize,
-}
+const VOLUME_STEP: f32 = 0.1;
 
 #[derive(Debug, Clone)]
 struct Audio {
@@ -91,37 +86,37 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
             terminal.draw(|f| render(f, state, &sink))?;
 
             // Input
-            if event::poll(std::time::Duration::from_millis(16))? {
-                if let Event::Key(key) = event::read()? {
-                    if state.is_searching {
-                        match handle_search(key, state) {
-                            Action::Escape => state.is_searching = false,
-                            Action::Submit => {}
-                            Action::None => {}
-                        }
-                    } else if state.is_configuring {
-                        match handle_config(key, state) {
-                            Action::Escape => state.is_configuring = false,
-                            Action::Submit => {}
-                            Action::None => {}
-                        }
-                    } else {
-                        match handle_playback(key, state) {
-                            Action::Escape => break,
-                            Action::Submit => {}
-                            Action::None => {}
-                        }
+            if event::poll(std::time::Duration::from_millis(16))?
+                && let Event::Key(key) = event::read()?
+            {
+                if state.is_searching {
+                    match handle_search(key, state) {
+                        Action::Escape => state.is_searching = false,
+                        Action::Submit => {}
+                        Action::None => {}
+                    }
+                } else if state.is_configuring {
+                    match handle_config(key, state) {
+                        Action::Escape => state.is_configuring = false,
+                        Action::Submit => {}
+                        Action::None => {}
+                    }
+                } else {
+                    match handle_playback(key, state) {
+                        Action::Escape => break,
+                        Action::Submit => {}
+                        Action::None => {}
                     }
                 }
             }
 
             // Auto-Queue
-            if sink.current_track_finished {
-                if let Some(mut index) = state.current_track_index {
-                    state.tracks[index].is_playing = false;
-                    index = (index + 1) % state.number_of_tracks;
-                    play_new_track(index, state);
-                }
+            if sink.current_track_finished
+                && let Some(mut index) = state.current_track_index
+            {
+                state.tracks[index].is_playing = false;
+                index = (index + 1) % state.number_of_tracks;
+                play_new_track(index, state);
             }
 
             // If we assume two threads are perfectly in sync(probably impossible),

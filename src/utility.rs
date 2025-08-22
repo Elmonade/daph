@@ -13,41 +13,41 @@ pub(crate) fn load_audio(path: PathBuf) -> (usize, Vec<Audio>) {
     for entry in WalkDir::new(path) {
         match entry {
             Ok(entry) => {
-                if let Some(extension) = entry.path().extension() {
-                    if extension == "mp3" || extension == "flac" || extension == "wav" {
-                        let path = entry.path();
-                        let tagged_file = match read_from_path(path) {
-                            Ok(it) => it,
-                            Err(_) => {
-                                eprintln!("\nCan't read the file: {}", path.display());
-                                continue;
-                            }
-                        };
+                if let Some(extension) = entry.path().extension()
+                    && (extension == "mp3" || extension == "flac" || extension == "wav")
+                {
+                    let path = entry.path();
+                    let tagged_file = match read_from_path(path) {
+                        Ok(it) => it,
+                        Err(_) => {
+                            eprintln!("\nCan't read the file: {}", path.display());
+                            continue;
+                        }
+                    };
 
-                        let tag = match tagged_file.primary_tag() {
-                            Some(primary_tag) => primary_tag,
-                            None => {
-                                eprintln!("\nGiven file has no readable tags: {}", path.display());
-                                continue;
-                            }
-                        };
+                    let tag = match tagged_file.primary_tag() {
+                        Some(primary_tag) => primary_tag,
+                        None => {
+                            eprintln!("\nGiven file has no readable tags: {}", path.display());
+                            continue;
+                        }
+                    };
 
-                        let tag_title = tag.title();
-                        let tag_artist = tag.artist();
-                        let duration = tagged_file.properties().duration();
+                    let tag_title = tag.title();
+                    let tag_artist = tag.artist();
+                    let duration = tagged_file.properties().duration();
 
-                        let title = String::from(tag_title.as_deref().unwrap_or("None"));
-                        let artist = String::from(tag_artist.as_deref().unwrap_or("None"));
-                        let seconds = duration.as_secs();
+                    let title = String::from(tag_title.as_deref().unwrap_or("None"));
+                    let artist = String::from(tag_artist.as_deref().unwrap_or("None"));
+                    let seconds = duration.as_secs();
 
-                        tracks.push(Audio {
-                            is_playing: (false),
-                            name: title,
-                            author: artist,
-                            length: seconds,
-                            path: path.to_path_buf(),
-                        });
-                    }
+                    tracks.push(Audio {
+                        is_playing: (false),
+                        name: title,
+                        author: artist,
+                        length: seconds,
+                        path: path.to_path_buf(),
+                    });
                 }
             }
             Err(_) => eprintln!(
@@ -59,9 +59,9 @@ pub(crate) fn load_audio(path: PathBuf) -> (usize, Vec<Audio>) {
     (tracks.len(), tracks)
 }
 
-pub(crate) fn order_by(new: &Order, old: &Order, tracks: &mut [Audio]) {
+pub(crate) fn order_by(new: &Order, old: &Order, tracks: &mut [Audio]) -> Option<usize> {
     if new == old {
-        return;
+        return None;
     }
     match new {
         Order::Shuffle => order_shuffle(tracks),
@@ -69,6 +69,13 @@ pub(crate) fn order_by(new: &Order, old: &Order, tracks: &mut [Audio]) {
         Order::Artist => order_artist(tracks),
         Order::Track => order_tracks(tracks),
     }
+
+    for index in 0..tracks.len() {
+        if tracks[index].is_playing {
+            return Some(index);
+        }
+    }
+    None
 }
 
 fn order_tracks(tracks: &mut [Audio]) {
