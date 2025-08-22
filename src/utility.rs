@@ -58,9 +58,9 @@ pub(crate) fn load_audio(path: PathBuf) -> (usize, Vec<Audio>) {
     (tracks.len(), tracks)
 }
 
-pub(crate) fn order_by(new: &Order, old: &Order, tracks: &mut [Audio]) {
+pub(crate) fn order_by(new: &Order, old: &Order, tracks: &mut [Audio]) -> Option<usize> {
     if new == old {
-        return;
+        return None;
     }
     match new {
         Order::Shuffle => order_shuffle(tracks),
@@ -68,6 +68,13 @@ pub(crate) fn order_by(new: &Order, old: &Order, tracks: &mut [Audio]) {
         Order::Artist => order_artist(tracks),
         Order::Track => order_tracks(tracks),
     }
+
+    for index in 0..tracks.len() {
+        if tracks[index].is_playing {
+            return Some(index);
+        }
+    }
+    None
 }
 
 fn order_tracks(tracks: &mut [Audio]) {
