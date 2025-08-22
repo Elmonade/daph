@@ -11,11 +11,10 @@ pub(crate) fn handle_config(key: KeyEvent, state: &mut PlayerState) -> Action {
         event::KeyCode::Tab => state.is_configuring = !state.is_configuring,
         event::KeyCode::Char(char) => match char {
             'j' => {
-                if let Some(selected_index) = state.list_state.selected() {
-                    if selected_index < 3 {
+                if let Some(selected_index) = state.list_state.selected()
+                    && selected_index < 3 {
                         state.list_state.select_next();
                     }
-                }
             }
             'k' => {
                 state.list_state.select_previous();
@@ -29,47 +28,30 @@ pub(crate) fn handle_config(key: KeyEvent, state: &mut PlayerState) -> Action {
             if let Some(index) = state.list_state.selected() {
                 match index {
                     0 => {
-                        match order_by(&Order::Shuffle, &state.playback_order, &mut state.tracks) {
-                            Some(index) => {
-                                state.current_track_index = Some(index);
+                        if let Some(index) = order_by(&Order::Shuffle, &state.playback_order, &mut state.tracks) {
+                            state.current_track_index = Some(index);
 
-                                state.playback_order = Order::Shuffle;
-                            }
-
-                            None => (),
+                            state.playback_order = Order::Shuffle;
                         }
                     }
-                    1 => match order_by(&Order::Album, &state.playback_order, &mut state.tracks) {
-                        Some(index) => {
-                            state.current_track_index = Some(index);
-                            state.playback_order = Order::Album;
-                        }
-                        None => (),
+                    1 => if let Some(index) = order_by(&Order::Album, &state.playback_order, &mut state.tracks) {
+                        state.current_track_index = Some(index);
+                        state.playback_order = Order::Album;
                     },
-                    2 => match order_by(&Order::Artist, &state.playback_order, &mut state.tracks) {
-                        Some(index) => {
-                            state.current_track_index = Some(index);
-                            state.playback_order = Order::Artist;
-                        }
-                        None => (),
+                    2 => if let Some(index) = order_by(&Order::Artist, &state.playback_order, &mut state.tracks) {
+                        state.current_track_index = Some(index);
+                        state.playback_order = Order::Artist;
                     },
 
-                    3 => match order_by(&Order::Track, &state.playback_order, &mut state.tracks) {
-                        Some(index) => {
-                            state.current_track_index = Some(index);
-                            state.playback_order = Order::Track;
-                        }
-                        None => (),
+                    3 => if let Some(index) = order_by(&Order::Track, &state.playback_order, &mut state.tracks) {
+                        state.current_track_index = Some(index);
+                        state.playback_order = Order::Track;
                     },
                     _ => {
-                        match order_by(&Order::Shuffle, &state.playback_order, &mut state.tracks) {
-                            Some(index) => {
-                                state.current_track_index = Some(index);
+                        if let Some(index) = order_by(&Order::Shuffle, &state.playback_order, &mut state.tracks) {
+                            state.current_track_index = Some(index);
 
-                                state.playback_order = Order::Shuffle;
-                            }
-
-                            None => (),
+                            state.playback_order = Order::Shuffle;
                         }
                     }
                 }
@@ -142,11 +124,10 @@ pub(crate) fn handle_playback(key: KeyEvent, state: &mut PlayerState) -> Action 
                 }
             }
             'j' => {
-                if let Some(selected_index) = state.table_state.selected() {
-                    if selected_index < state.number_of_tracks - 1 {
+                if let Some(selected_index) = state.table_state.selected()
+                    && selected_index < state.number_of_tracks - 1 {
                         state.table_state.select_next();
                     }
-                }
             }
             'k' => {
                 state.table_state.select_previous();

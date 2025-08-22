@@ -70,12 +70,7 @@ pub(crate) fn order_by(new: &Order, old: &Order, tracks: &mut [Audio]) -> Option
         Order::Track => order_tracks(tracks),
     }
 
-    for index in 0..tracks.len() {
-        if tracks[index].is_playing {
-            return Some(index);
-        }
-    }
-    None
+    (0..tracks.len()).find(|&index| tracks[index].is_playing)
 }
 
 fn order_tracks(tracks: &mut [Audio]) {
