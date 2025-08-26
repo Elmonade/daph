@@ -17,45 +17,38 @@ const VOLUME_STEP: f32 = 0.1;
 struct Config {
     #[serde(default = "Config::default_path")]
     path: PathBuf,
-    #[serde(default = "Config::load_defautl_seek_distance")]
+    #[serde(default = "Config::defautl_seek_distance")]
     seek_distance: usize,
 }
 
 impl Config {
-    fn load_config(path: &PathBuf) -> Config {
-        let file = fs::read_to_string(path).expect("Could not read the config file.");
-        match toml::from_str(&file) {
-            Ok(config) => config,
-            Err(err) => {
-                // TODO: Find the missing fields and fill them with default.
-                println!("{:?}", err);
-                Config::default()
+    fn new(path: &PathBuf) -> Config {
+        match fs::read_to_string(path) {
+            Ok(path) => match toml::from_str(&path) {
+                Ok(config) => config,
+                Err(err) => {
+                    println!("{}", err);
+                    std::process::exit(1);
+                }
+            },
+            Err(_) => {
+                eprintln!("Unable to read the configuration file. Using default values.");
+                Config {
+                    path: Self::default_path(),
+                    seek_distance: Self::defautl_seek_distance(),
+                }
             }
         }
     }
 
     fn default_path() -> PathBuf {
-        let path = match home::home_dir() {
+        match home::home_dir() {
             Some(path) => path.join("Music"),
             None => PathBuf::from("/home"), // Grasping for anything out there.
-        };
-        path
-    }
-    fn load_defautl_seek_distance() -> usize{
-        DEFAULT_SEEK_DISTANCE
-    }
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        let path = match home::home_dir() {
-            Some(path) => path.join("Music"),
-            None => PathBuf::from("/home"), // Grasping for anything out there.
-        };
-        Config {
-            path,
-            seek_distance: DEFAULT_SEEK_DISTANCE,
         }
+    }
+    fn defautl_seek_distance() -> usize {
+        DEFAULT_SEEK_DISTANCE
     }
 }
 
@@ -108,20 +101,12 @@ impl PlayerState {
     }
 }
 
-// Config file found
 impl Configure for PlayerState {
     fn modify(path: PathBuf) -> PlayerState {
-        PlayerState::init(Config::load_config(&path))
+        PlayerState::init(Config::new(&path))
     }
 }
 
 pub(crate) trait Configure {
     fn modify(path: PathBuf) -> PlayerState;
-}
-
-// No config file found
-impl Default for PlayerState {
-    fn default() -> Self {
-        PlayerState::init(Config::default())
-    }
 }

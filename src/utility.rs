@@ -51,7 +51,7 @@ pub(crate) fn load_audio(path: PathBuf) -> (usize, Vec<Audio>) {
                 }
             }
             Err(error) => {
-                eprintln!("Does this {:?} path exist?", error.path().unwrap());
+                eprintln!("Does {:?} path exist?", error.path().unwrap());
             }
         }
     }

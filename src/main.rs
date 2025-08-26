@@ -53,13 +53,7 @@ fn main() -> Result<()> {
     // TODO: Looks shorter and cleaner but incase this unwrap fails...
     // this won't crash the whole thing, right?
     let config_path = home::home_dir().unwrap().join(".config/daph.toml");
-    let mut state = if config_path.exists() {
-        eprintln!("{:?}", config_path);
-        PlayerState::modify(config_path)
-    } else {
-        eprintln!("LIME");
-        PlayerState::default()
-    };
+    let mut state = PlayerState::modify(config_path);
 
     state.table_state.select_first();
     state.table_state.select_first_column();
