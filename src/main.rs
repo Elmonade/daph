@@ -1,6 +1,6 @@
 use crate::button_handler::handle_config;
-use crate::button_handler::handle_search;
 use crate::button_handler::handle_playback;
+use crate::button_handler::handle_search;
 use crate::state::Configure;
 use crate::state::PlayerState;
 use crate::utility::play_new_track;
@@ -50,14 +50,14 @@ enum Action {
 fn main() -> Result<()> {
     env_logger::init();
 
-    let mut state = if let Some(path) = home::home_dir() {
-        let config_path = path.join(".config").join("daph.toml");
-        if config_path.exists() {
-            PlayerState::configured(config_path)
-        } else {
-            PlayerState::default()
-        }
+    // TODO: Looks shorter and cleaner but incase this unwrap fails...
+    // this won't crash the whole thing, right?
+    let config_path = home::home_dir().unwrap().join(".config/daph.toml");
+    let mut state = if config_path.exists() {
+        eprintln!("{:?}", config_path);
+        PlayerState::modify(config_path)
     } else {
+        eprintln!("LIME");
         PlayerState::default()
     };
 
@@ -117,9 +117,11 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
                 play_new_track(index, state);
             }
 
-            // If we assume two threads are perfectly in sync(probably impossible),
-            // in total, one iteration should take 49ms when no button is pressed.
-            // 2s / 49ms = ~41
+            /*
+            Assume two threads are perfectly in sync(probably impossible).
+            In total, one iteration should take 49ms when no button is pressed.
+            2s / 49ms = ~41
+            */
             state.iteration_count += 1;
             if state.iteration_count % 41 == 0 {
                 state.is_adjusting = false;

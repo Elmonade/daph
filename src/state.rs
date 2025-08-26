@@ -15,8 +15,35 @@ const VOLUME_STEP: f32 = 0.1;
 
 #[derive(Deserialize)]
 struct Config {
+    #[serde(default = "Config::default_path")]
     path: PathBuf,
+    #[serde(default = "Config::load_defautl_seek_distance")]
     seek_distance: usize,
+}
+
+impl Config {
+    fn load_config(path: &PathBuf) -> Config {
+        let file = fs::read_to_string(path).expect("Could not read the config file.");
+        match toml::from_str(&file) {
+            Ok(config) => config,
+            Err(err) => {
+                // TODO: Find the missing fields and fill them with default.
+                println!("{:?}", err);
+                Config::default()
+            }
+        }
+    }
+
+    fn default_path() -> PathBuf {
+        let path = match home::home_dir() {
+            Some(path) => path.join("Music"),
+            None => PathBuf::from("/home"), // Grasping for anything out there.
+        };
+        path
+    }
+    fn load_defautl_seek_distance() -> usize{
+        DEFAULT_SEEK_DISTANCE
+    }
 }
 
 impl Default for Config {
@@ -79,27 +106,17 @@ impl PlayerState {
             volume_step: VOLUME_STEP,
         }
     }
-
-    fn load_config(path: &PathBuf) -> Config {
-        let file = fs::read(path)
-            .expect("Could not read the config file.")
-            .iter()
-            .map(|c| *c as char)
-            .collect::<String>();
-        toml::from_str(&file).expect("Not properly formatted")
-    }
 }
 
 // Config file found
 impl Configure for PlayerState {
-    fn configured(path: PathBuf) -> PlayerState {
-        let config = PlayerState::load_config(&path);
-        PlayerState::init(config)
+    fn modify(path: PathBuf) -> PlayerState {
+        PlayerState::init(Config::load_config(&path))
     }
 }
 
 pub(crate) trait Configure {
-    fn configured(path: PathBuf) -> PlayerState;
+    fn modify(path: PathBuf) -> PlayerState;
 }
 
 // No config file found

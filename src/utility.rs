@@ -50,10 +50,9 @@ pub(crate) fn load_audio(path: PathBuf) -> (usize, Vec<Audio>) {
                     });
                 }
             }
-            Err(_) => eprintln!(
-                "Cannot access this path: {}",
-                entry.unwrap().path().to_str().unwrap()
-            ),
+            Err(error) => {
+                eprintln!("Does this {:?} path exist?", error.path().unwrap());
+            }
         }
     }
     (tracks.len(), tracks)
