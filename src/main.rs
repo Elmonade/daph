@@ -55,6 +55,17 @@ fn main() -> Result<()> {
     let config_path = home::home_dir().unwrap().join(".config/daph.toml");
     let mut state = PlayerState::modify(config_path);
 
+    if state.number_of_tracks == 0 {
+        println!("Can't find a single audio file. ");
+        println!(
+            "You may:
+        1. Update the configuation file with path to your audio file.
+        2. Create Music directory in your home directory."
+        );
+
+        std::process::exit(1);
+    }
+
     state.table_state.select_first();
     state.table_state.select_first_column();
     state.list_state.select_first();
