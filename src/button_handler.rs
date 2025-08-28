@@ -9,13 +9,15 @@ use std::path::PathBuf;
 pub(crate) fn handle_config(key: KeyEvent, model: &mut PlayerModel) -> Action {
     match key.code {
         event::KeyCode::Tab => {
-            if model.state == State::Playing {
-                model.state = State::Configuring;
-            } else if model.state == State::Configuring {
-                model.state = State::Playing;
+            if model.state == &State::Playing {
+                model.state = &State::Configuring;
+            } else if model.state == &State::Configuring {
+                model.state = &State::Playing;
             }
         }
         event::KeyCode::Char(char) => match char {
+            'K' => model.state = &State::Adjusting,
+            'J' => model.state = &State::Adjusting,
             'j' => {
                 if let Some(selected_index) = model.list_state.selected()
                     && selected_index < 3
@@ -107,17 +109,17 @@ pub(crate) fn handle_search(key: KeyEvent, model: &mut PlayerModel) -> Action {
 pub(crate) fn handle_playback(key: KeyEvent, model: &mut PlayerModel) -> Action {
     match key.code {
         event::KeyCode::Tab => {
-            if model.state == State::Playing {
-                model.state = State::Configuring;
-            } else if model.state == State::Configuring {
-                model.state = State::Playing;
+            if model.state == &State::Playing {
+                model.state = &State::Configuring;
+            } else if model.state == &State::Configuring {
+                model.state = &State::Playing;
             }
         }
         event::KeyCode::Esc => return Action::Escape,
         event::KeyCode::Char(char) => match char {
-            'K' => model.state = State::Adjusting,
-            'J' => model.state = State::Adjusting,
-            '/' => model.state = State::Searching,
+            'K' => model.state = &State::Adjusting,
+            'J' => model.state = &State::Adjusting,
+            '/' => model.state = &State::Searching,
             ' ' => {
                 model
                     .tx

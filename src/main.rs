@@ -40,7 +40,7 @@ pub(crate) enum Command {
     Volume(f32),
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum State {
     Searching,
     Configuring,
@@ -73,6 +73,7 @@ fn main() -> Result<()> {
 }
 
 fn run(mut terminal: DefaultTerminal, model: &mut PlayerModel) -> Result<()> {
+    let mut previous_state = model.state;
     loop {
         if let Ok(sink) = model.sink_rx.recv_timeout(Duration::from_millis(33)) {
             // Render
@@ -82,14 +83,17 @@ fn run(mut terminal: DefaultTerminal, model: &mut PlayerModel) -> Result<()> {
             if event::poll(std::time::Duration::from_millis(16))?
                 && let Event::Key(key) = event::read()?
             {
+                if model.state != &State::Adjusting {
+                    previous_state = model.state;
+                }
                 match model.state {
                     State::Searching => match handle_search(key, model) {
-                        Action::Escape => model.state = State::Playing,
+                        Action::Escape => model.state = &State::Playing,
                         Action::Submit => {}
                         Action::None => {}
                     },
                     State::Configuring => match handle_config(key, model) {
-                        Action::Escape => model.state = State::Playing,
+                        Action::Escape => model.state = &State::Playing,
                         Action::Submit => {}
                         Action::None => {}
                     },
@@ -120,10 +124,11 @@ fn run(mut terminal: DefaultTerminal, model: &mut PlayerModel) -> Result<()> {
             In total, one iteration should take 49ms when no button is pressed.
             2s / 49ms = ~41
             */
-            if model.state == State::Adjusting {
+            if model.state == &State::Adjusting {
                 model.iteration_count += 1;
                 if model.iteration_count % 41 == 0 {
-                    model.state = State::Playing;
+                    eprintln!("{:?}", previous_state);
+                    model.state = previous_state;
                     model.iteration_count = 0;
                 }
             }

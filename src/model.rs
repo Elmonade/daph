@@ -9,9 +9,9 @@ use ratatui::widgets::ListState;
 use ratatui::widgets::TableState;
 use std::sync::mpsc::{self, Receiver, Sender};
 
-pub(crate) struct PlayerModel {
+pub(crate) struct PlayerModel<'a> {
 
-    pub state: State,
+    pub state: &'a State,
 
     pub tracks: Vec<Audio>,
     pub number_of_tracks: usize,
@@ -33,7 +33,7 @@ pub(crate) struct PlayerModel {
     pub volume_step: f32,
 }
 
-impl PlayerModel {
+impl PlayerModel<'_> {
     pub(crate) fn create(config: Config) -> Self {
         let (tx, _rx) = mpsc::channel::<Command>();
         let (_tx, sink_rx) = mpsc::channel::<SinkModel>();
@@ -54,7 +54,7 @@ impl PlayerModel {
         PlayerModel {
             tracks,
             number_of_tracks,
-            state: State::Playing,
+            state: &State::Playing,
             keyword: String::new(),
             current_track_index: None,
             table_state: TableState::default().with_selected(Some(0)),

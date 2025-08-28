@@ -110,7 +110,7 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
     frame.render_stateful_widget(table, music_list_area, &mut table_model);
 
     // Config Section
-    let highlight = if model.state == State::Configuring {
+    let highlight = if model.state == &State::Configuring {
         Style::new().reversed()
     } else {
         Style::new()
@@ -140,7 +140,7 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
     frame.render_stateful_widget(list.block(settings), right_top, &mut list_model);
 
     // Search Section
-    if model.state == State::Searching {
+    if model.state == &State::Searching {
         frame.render_widget(Clear, right);
         Paragraph::new(model.keyword.as_str())
             .block(
@@ -154,7 +154,7 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
     }
 
     // Volume Section
-    if model.state == State::Adjusting {
+    if model.state == &State::Adjusting {
         let volume = (sink.volume * 10.0) as u32;
         let mut string_volume = volume.to_string();
         if volume < 10 {
