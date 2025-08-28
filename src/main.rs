@@ -1,22 +1,24 @@
 use crate::button_handler::handle_config;
 use crate::button_handler::handle_playback;
 use crate::button_handler::handle_search;
-use crate::state::Configure;
-use crate::state::PlayerState;
+use crate::button_handler::handle_volume;
+use crate::config::Config;
+use crate::model::PlayerModel;
 use crate::utility::play_new_track;
 use crate::view::render;
 use color_eyre::eyre::Result;
 use crossterm::event::{self, Event};
-use playback::SinkState;
+use player::SinkModel;
 use ratatui::DefaultTerminal;
 use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::time::Duration;
 mod button_handler;
+mod config;
 mod fuzzy_search;
+mod model;
 mod order;
-mod playback;
-mod state;
+mod player;
 mod utility;
 mod view;
 
@@ -36,9 +38,14 @@ pub(crate) enum Command {
     Forward(usize, usize),
     Backward(usize),
     Volume(f32),
-    _Next(PathBuf, i32),
-    _Previous(PathBuf, i32),
-    _Append(PathBuf, i32),
+}
+
+#[derive(PartialEq)]
+enum State {
+    Searching,
+    Configuring,
+    Adjusting,
+    Playing,
 }
 
 enum Action {
@@ -50,76 +57,62 @@ enum Action {
 fn main() -> Result<()> {
     env_logger::init();
 
-    // TODO: Looks shorter and cleaner but incase this unwrap fails...
-    // this won't crash the whole thing, right?
+    // TODO: Handle this unwrap.
     let config_path = home::home_dir().unwrap().join(".config/daph.toml");
-    let mut state = PlayerState::modify(config_path);
 
-    if state.number_of_tracks == 0 {
-        println!("Can't find a single audio file. ");
-        println!(
-            "You may:
-        1. Update the configuation file with path to your audio file.
-        2. Create Music directory in your home directory."
-        );
-
-        std::process::exit(1);
-    }
-
-    state.table_state.select_first();
-    state.table_state.select_first_column();
-    state.list_state.select_first();
-
-    let (command_tx, sink_rx) = playback::setup();
-    state.tx = command_tx;
-    state.sink_rx = sink_rx;
+    let mut model = PlayerModel::create(Config::new(&config_path));
+    let (command_tx, sink_rx) = SinkModel::create();
+    model.tx = command_tx;
+    model.sink_rx = sink_rx;
 
     color_eyre::install()?;
     let terminal = ratatui::init();
-    let result = run(terminal, &mut state);
-
+    let result = run(terminal, &mut model);
     let _ = ratatui::try_restore();
     result
 }
 
-fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
+fn run(mut terminal: DefaultTerminal, model: &mut PlayerModel) -> Result<()> {
     loop {
-        if let Ok(sink) = state.sink_rx.recv_timeout(Duration::from_millis(33)) {
+        if let Ok(sink) = model.sink_rx.recv_timeout(Duration::from_millis(33)) {
             // Render
-            terminal.draw(|f| render(f, state, &sink))?;
+            terminal.draw(|f| render(f, model, &sink))?;
 
             // Input
             if event::poll(std::time::Duration::from_millis(16))?
                 && let Event::Key(key) = event::read()?
             {
-                if state.is_searching {
-                    match handle_search(key, state) {
-                        Action::Escape => state.is_searching = false,
+                match model.state {
+                    State::Searching => match handle_search(key, model) {
+                        Action::Escape => model.state = State::Playing,
                         Action::Submit => {}
                         Action::None => {}
-                    }
-                } else if state.is_configuring {
-                    match handle_config(key, state) {
-                        Action::Escape => state.is_configuring = false,
+                    },
+                    State::Configuring => match handle_config(key, model) {
+                        Action::Escape => model.state = State::Playing,
                         Action::Submit => {}
                         Action::None => {}
-                    }
-                } else {
-                    match handle_playback(key, state) {
+                    },
+                    State::Playing => match handle_playback(key, model) {
                         Action::Escape => break,
                         Action::Submit => {}
                         Action::None => {}
-                    }
+                    },
+                    State::Adjusting => match handle_volume(key, model) {
+                        Action::Escape => break,
+                        Action::Submit => {}
+                        Action::None => {}
+                    },
                 }
             }
 
             // Auto-Queue
             if sink.current_track_finished
-                && let Some(mut index) = state.current_track_index
+                && let Some(mut index) = model.current_track_index
             {
-                state.tracks[index].is_playing = false;
-                index = (index + 1) % state.number_of_tracks;
-                play_new_track(index, state);
+                model.tracks[index].is_playing = false;
+                index = (index + 1) % model.number_of_tracks;
+                play_new_track(index, model);
             }
 
             /*
@@ -127,10 +120,12 @@ fn run(mut terminal: DefaultTerminal, state: &mut PlayerState) -> Result<()> {
             In total, one iteration should take 49ms when no button is pressed.
             2s / 49ms = ~41
             */
-            state.iteration_count += 1;
-            if state.iteration_count % 41 == 0 {
-                state.is_adjusting = false;
-                state.iteration_count = 0;
+            if model.state == State::Adjusting {
+                model.iteration_count += 1;
+                if model.iteration_count % 41 == 0 {
+                    model.state = State::Playing;
+                    model.iteration_count = 0;
+                }
             }
         }
     }

@@ -101,7 +101,7 @@ fn order_shuffle(tracks: &mut [Audio]) {
     }
 }
 
-pub(crate) fn play_new_track(index: usize, state: &mut PlayerState) {
+pub(crate) fn play_new_track(index: usize, state: &mut PlayerModel) {
     state.current_track_index = Some(index);
     state.tracks[index].is_playing = true;
 

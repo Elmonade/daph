@@ -10,55 +10,53 @@ use std::{
 
 use crate::Command;
 
-pub(crate) struct SinkState {
-    pub _is_paused: bool,
-    pub _is_empty: bool,
+pub(crate) struct SinkModel {
     pub is_playing: bool,
     pub current_track_finished: bool,
     pub position: Duration,
     pub volume: f32,
 }
 
-pub fn setup() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkState>) {
-    let (command_tx, command_rx) = mpsc::channel::<Command>();
-    let (state_tx, state_rx) = mpsc::channel::<SinkState>();
+impl SinkModel {
+    pub(crate) fn create() -> (mpsc::Sender<Command>, mpsc::Receiver<SinkModel>) {
+        let (command_tx, command_rx) = mpsc::channel::<Command>();
+        let (state_tx, state_rx) = mpsc::channel::<SinkModel>();
 
-    let _ = thread::Builder::new()
-        .name("playback".to_string())
-        .spawn(move || {
-            let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-            let sink = Sink::try_new(&stream_handle).unwrap();
-            let mut was_playing = false;
-            let mut sink_state;
-            let mut current_track_finished = false;
+        let _ = thread::Builder::new()
+            .name("playback".to_string())
+            .spawn(move || {
+                let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+                let sink = Sink::try_new(&stream_handle).unwrap();
+                let mut was_playing = false;
+                let mut sink_state;
+                let mut current_track_finished = false;
 
-            loop {
-                if let Ok(command) = command_rx.try_recv() {
-                    audio_command(command, &sink);
+                loop {
+                    if let Ok(command) = command_rx.try_recv() {
+                        audio_command(command, &sink);
+                    }
+
+                    let is_playing = !sink.empty() && !sink.is_paused();
+                    if was_playing && sink.empty() {
+                        current_track_finished = true;
+                    }
+
+                    sink_state = SinkModel {
+                        is_playing,
+                        current_track_finished,
+                        position: sink.get_pos(),
+                        volume: sink.volume(),
+                    };
+
+                    current_track_finished = false;
+                    state_tx.send(sink_state).unwrap_or(());
+
+                    was_playing = is_playing;
+                    thread::sleep(time::Duration::from_millis(33));
                 }
-
-                let is_playing = !sink.empty() && !sink.is_paused();
-                if was_playing && sink.empty() {
-                    current_track_finished = true;
-                }
-
-                sink_state = SinkState {
-                    _is_paused: sink.is_paused(),
-                    _is_empty: sink.empty(),
-                    is_playing,
-                    current_track_finished,
-                    position: sink.get_pos(),
-                    volume: sink.volume(),
-                };
-
-                current_track_finished = false;
-                state_tx.send(sink_state).unwrap_or(());
-
-                was_playing = is_playing;
-                thread::sleep(time::Duration::from_millis(33));
-            }
-        });
-    (command_tx, state_rx)
+            });
+        (command_tx, state_rx)
+    }
 }
 
 fn audio_command(_message: Command, sink: &Sink) {
@@ -67,9 +65,6 @@ fn audio_command(_message: Command, sink: &Sink) {
         Command::New(path) => new_song(sink, &path),
         Command::Forward(distance, length) => seek_forward(sink, distance, length),
         Command::Backward(distance) => seek_backward(sink, distance),
-        Command::_Next(_, _) => next(sink),
-        Command::_Append(path, _) => append(sink, &path),
-        Command::_Previous(_, _) => todo!(),
         Command::Volume(step) => volume_control(sink, step),
     }
 }
@@ -81,18 +76,6 @@ fn volume_control(sink: &Sink, step: f32) {
         volume = ((volume + step) * 100.0).round() / 100.0;
         sink.set_volume(volume);
     }
-}
-
-fn next(sink: &Sink) {
-    sink.skip_one();
-}
-
-fn append(sink: &Sink, path: &PathBuf) {
-    let file = File::open(path).unwrap();
-    let buffer = BufReader::new(file);
-    let source = Decoder::new(buffer).unwrap();
-
-    sink.append(source);
 }
 
 fn new_song(sink: &Sink, path: &PathBuf) {

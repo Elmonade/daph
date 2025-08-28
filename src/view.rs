@@ -1,9 +1,8 @@
-use std::time::Duration;
-
 use crate::Audio;
+use crate::State;
+use crate::PlayerModel;
+use crate::SinkModel;
 use crate::order::Order;
-use crate::PlayerState;
-use crate::SinkState;
 use number_drawer::NumberDrawer;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
@@ -21,6 +20,7 @@ use ratatui::widgets::Paragraph;
 use ratatui::widgets::Widget;
 use ratatui::widgets::{Block, BorderType, Padding};
 use ratatui::widgets::{Row, Table};
+use std::time::Duration;
 
 mod number_drawer;
 mod view_utility;
@@ -29,7 +29,7 @@ const CUSTOM_LABEL_COLOR: Color = tailwind::SKY.c200;
 const BY_COLOR: Color = tailwind::RED.c300;
 const GAUGE_COLOR: Color = tailwind::GREEN.c800;
 
-pub(crate) fn render(frame: &mut Frame, state: &PlayerState, sink: &SinkState) {
+pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
     let [mut left, mut right] =
         Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(25)])
             .margin(0)
@@ -93,7 +93,7 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, sink: &SinkState) {
         bottom: (0),
     });
 
-    let table = view_utility::create_table(&state.tracks);
+    let table = view_utility::create_table(&model.tracks);
     let dolphin =
         Paragraph::new(NumberDrawer::draw("bird")).block(Block::default().padding(Padding {
             left: (20),
@@ -102,15 +102,15 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, sink: &SinkState) {
             bottom: (0),
         }));
 
-    let mut table_state = state.table_state.clone();
-    let mut list_state = state.list_state.clone();
+    let mut table_model = model.table_state.clone();
+    let mut list_model = model.list_state.clone();
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(left_bottom_block, left_bottom);
     frame.render_widget(dolphin, right_bottom);
-    frame.render_stateful_widget(table, music_list_area, &mut table_state);
+    frame.render_stateful_widget(table, music_list_area, &mut table_model);
 
     // Config Section
-    let highlight = if state.is_configuring {
+    let highlight = if model.state == State::Configuring {
         Style::new().reversed()
     } else {
         Style::new()
@@ -127,7 +127,7 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, sink: &SinkState) {
     let rows: Vec<Span> = options
         .iter()
         .map(|item| {
-            let style = match *item == state.playback_order.to_string() {
+            let style = match *item == model.playback_order.to_string() {
                 true => Style::default().add_modifier(Modifier::UNDERLINED),
                 _ => Style::default(),
             };
@@ -137,12 +137,12 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, sink: &SinkState) {
         .collect();
 
     let list = view_utility::create_list(rows, highlight);
-    frame.render_stateful_widget(list.block(settings), right_top, &mut list_state);
+    frame.render_stateful_widget(list.block(settings), right_top, &mut list_model);
 
     // Search Section
-    if state.is_searching {
+    if model.state == State::Searching {
         frame.render_widget(Clear, right);
-        Paragraph::new(state.keyword.as_str())
+        Paragraph::new(model.keyword.as_str())
             .block(
                 Block::bordered()
                     .fg(Color::Green)
@@ -154,7 +154,7 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, sink: &SinkState) {
     }
 
     // Volume Section
-    if state.is_adjusting {
+    if model.state == State::Adjusting {
         let volume = (sink.volume * 10.0) as u32;
         let mut string_volume = volume.to_string();
         if volume < 10 {
@@ -195,13 +195,14 @@ pub(crate) fn render(frame: &mut Frame, state: &PlayerState, sink: &SinkState) {
 
     let mut index = 8; // Point at something on startup.
 
-    if let Some(current_index) = state.current_track_index {
+    if let Some(current_index) = model.current_track_index {
         index = current_index;
     }
 
-    if let Some(music) = state.tracks.get(index) {
+    if let Some(music) = model.tracks.get(index) {
         let progress_bar_style = Style::new().italic().bold().fg(player_color);
-        let elapsed_label = Span::styled(format!("{}", sink.position.as_secs()), progress_bar_style);
+        let elapsed_label =
+            Span::styled(format!("{}", sink.position.as_secs()), progress_bar_style);
         let total_label = Span::styled(format!(" {}", music.length), progress_bar_style);
         let total_time = Paragraph::new(total_label).block(total_time_block);
         let elapsed_time = Paragraph::new(elapsed_label)

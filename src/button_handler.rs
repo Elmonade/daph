@@ -1,24 +1,30 @@
-use std::path::PathBuf;
-
+use crate::State;
 use crate::fuzzy_search::search;
 use crate::order::Order;
 use crate::utility::order_by;
-use crate::{Action, Command, PlayerState, play_new_track};
+use crate::{Action, Command, PlayerModel, play_new_track};
 use crossterm::event::{self, KeyEvent};
+use std::path::PathBuf;
 
-pub(crate) fn handle_config(key: KeyEvent, state: &mut PlayerState) -> Action {
+pub(crate) fn handle_config(key: KeyEvent, model: &mut PlayerModel) -> Action {
     match key.code {
-        event::KeyCode::Tab => state.is_configuring = !state.is_configuring,
+        event::KeyCode::Tab => {
+            if model.state == State::Playing {
+                model.state = State::Configuring;
+            } else if model.state == State::Configuring {
+                model.state = State::Playing;
+            }
+        }
         event::KeyCode::Char(char) => match char {
             'j' => {
-                if let Some(selected_index) = state.list_state.selected()
+                if let Some(selected_index) = model.list_state.selected()
                     && selected_index < 3
                 {
-                    state.list_state.select_next();
+                    model.list_state.select_next();
                 }
             }
             'k' => {
-                state.list_state.select_previous();
+                model.list_state.select_previous();
             }
             _ => {}
         },
@@ -26,46 +32,46 @@ pub(crate) fn handle_config(key: KeyEvent, state: &mut PlayerState) -> Action {
             return Action::Escape;
         }
         event::KeyCode::Enter => {
-            if let Some(index) = state.list_state.selected() {
+            if let Some(index) = model.list_state.selected() {
                 match index {
                     0 => {
                         if let Some(index) =
-                            order_by(&Order::Shuffle, &state.playback_order, &mut state.tracks)
+                            order_by(&Order::Shuffle, &model.playback_order, &mut model.tracks)
                         {
-                            state.current_track_index = Some(index);
-                            state.playback_order = Order::Shuffle;
+                            model.current_track_index = Some(index);
+                            model.playback_order = Order::Shuffle;
                         }
                     }
                     1 => {
                         if let Some(index) =
-                            order_by(&Order::Album, &state.playback_order, &mut state.tracks)
+                            order_by(&Order::Album, &model.playback_order, &mut model.tracks)
                         {
-                            state.current_track_index = Some(index);
-                            state.playback_order = Order::Album;
+                            model.current_track_index = Some(index);
+                            model.playback_order = Order::Album;
                         }
                     }
                     2 => {
                         if let Some(index) =
-                            order_by(&Order::Artist, &state.playback_order, &mut state.tracks)
+                            order_by(&Order::Artist, &model.playback_order, &mut model.tracks)
                         {
-                            state.current_track_index = Some(index);
-                            state.playback_order = Order::Artist;
+                            model.current_track_index = Some(index);
+                            model.playback_order = Order::Artist;
                         }
                     }
                     3 => {
                         if let Some(index) =
-                            order_by(&Order::Track, &state.playback_order, &mut state.tracks)
+                            order_by(&Order::Track, &model.playback_order, &mut model.tracks)
                         {
-                            state.current_track_index = Some(index);
-                            state.playback_order = Order::Track;
+                            model.current_track_index = Some(index);
+                            model.playback_order = Order::Track;
                         }
                     }
                     _ => {
                         if let Some(index) =
-                            order_by(&Order::Shuffle, &state.playback_order, &mut state.tracks)
+                            order_by(&Order::Shuffle, &model.playback_order, &mut model.tracks)
                         {
-                            state.current_track_index = Some(index);
-                            state.playback_order = Order::Shuffle;
+                            model.current_track_index = Some(index);
+                            model.playback_order = Order::Shuffle;
                         }
                     }
                 }
@@ -77,15 +83,15 @@ pub(crate) fn handle_config(key: KeyEvent, state: &mut PlayerState) -> Action {
     Action::None
 }
 
-pub(crate) fn handle_search(key: KeyEvent, state: &mut PlayerState) -> Action {
+pub(crate) fn handle_search(key: KeyEvent, model: &mut PlayerModel) -> Action {
     match key.code {
         event::KeyCode::Char(c) => {
-            state.keyword.push(c);
-            state.matched_tracks = search(&state.tracks, &state.keyword);
+            model.keyword.push(c);
+            model.matched_tracks = search(&model.tracks, &model.keyword);
         }
         event::KeyCode::Backspace => {
-            state.keyword.pop();
-            state.matched_tracks = search(&state.tracks, &state.keyword);
+            model.keyword.pop();
+            model.matched_tracks = search(&model.tracks, &model.keyword);
         }
         event::KeyCode::Esc => {
             return Action::Escape;
@@ -98,101 +104,115 @@ pub(crate) fn handle_search(key: KeyEvent, state: &mut PlayerState) -> Action {
     Action::None
 }
 
-pub(crate) fn handle_playback(key: KeyEvent, state: &mut PlayerState) -> Action {
+pub(crate) fn handle_playback(key: KeyEvent, model: &mut PlayerModel) -> Action {
     match key.code {
-        event::KeyCode::Tab => state.is_configuring = !state.is_configuring,
+        event::KeyCode::Tab => {
+            if model.state == State::Playing {
+                model.state = State::Configuring;
+            } else if model.state == State::Configuring {
+                model.state = State::Playing;
+            }
+        }
         event::KeyCode::Esc => return Action::Escape,
         event::KeyCode::Char(char) => match char {
+            'K' => model.state = State::Adjusting,
+            'J' => model.state = State::Adjusting,
+            '/' => model.state = State::Searching,
             ' ' => {
-                state
+                model
                     .tx
                     .send(Command::PlayPause(PathBuf::new()))
                     .unwrap_or(());
             }
             ':' => {
-                if let Some(index) = state.table_state.selected() {
-                    match state.current_track_index {
+                if let Some(index) = model.table_state.selected() {
+                    match model.current_track_index {
                         Some(current_index) => {
                             if index == current_index {
-                                state
+                                model
                                     .tx
                                     .send(Command::PlayPause(PathBuf::new()))
                                     .unwrap_or(());
                             } else {
-                                state.tracks[current_index].is_playing = false;
-                                play_new_track(index, state);
+                                model.tracks[current_index].is_playing = false;
+                                play_new_track(index, model);
                             }
                         }
                         None => {
-                            play_new_track(index, state);
+                            play_new_track(index, model);
                         }
                     }
                 }
             }
-            '/' => {
-                state.is_searching = true;
-            }
             'D' => {
-                if let Some(index) = state.table_state.selected() {
-                    state.tracks.remove(index);
+                if let Some(index) = model.table_state.selected() {
+                    model.tracks.remove(index);
                 }
             }
             'j' => {
-                if let Some(selected_index) = state.table_state.selected()
-                    && selected_index < state.number_of_tracks - 1
+                if let Some(selected_index) = model.table_state.selected()
+                    && selected_index < model.number_of_tracks - 1
                 {
-                    state.table_state.select_next();
+                    model.table_state.select_next();
                 }
             }
             'k' => {
-                state.table_state.select_previous();
+                model.table_state.select_previous();
             }
             'p' => {
-                if let Some(mut index) = state.current_track_index {
-                    state.tracks[index].is_playing = false;
-                    index = (index + state.number_of_tracks - 1) % state.number_of_tracks;
-                    play_new_track(index, state);
+                if let Some(mut index) = model.current_track_index {
+                    model.tracks[index].is_playing = false;
+                    index = (index + model.number_of_tracks - 1) % model.number_of_tracks;
+                    play_new_track(index, model);
                 }
             }
             'n' => {
-                if let Some(mut index) = state.current_track_index {
-                    state.tracks[index].is_playing = false;
-                    index = (index + 1) % state.number_of_tracks;
-                    play_new_track(index, state);
+                if let Some(mut index) = model.current_track_index {
+                    model.tracks[index].is_playing = false;
+                    index = (index + 1) % model.number_of_tracks;
+                    play_new_track(index, model);
                 }
             }
             '<' => {
-                state
+                model
                     .tx
-                    .send(Command::Backward(state.seek_distance))
+                    .send(Command::Backward(model.seek_distance))
                     .unwrap_or(());
             }
             '>' => {
-                if let Some(index) = state.current_track_index {
-                    let length = state.tracks[index].length;
-                    state
+                if let Some(index) = model.current_track_index {
+                    let length = model.tracks[index].length;
+                    model
                         .tx
-                        .send(Command::Forward(state.seek_distance, length as usize))
+                        .send(Command::Forward(model.seek_distance, length as usize))
                         .unwrap_or(());
                 }
             }
+            _ => {}
+        },
+        _ => {}
+    }
+    Action::None
+}
+
+pub(crate) fn handle_volume(key: KeyEvent, model: &mut PlayerModel) -> Action {
+    match key.code {
+        event::KeyCode::Char(char) => match char {
             'K' => {
-                state.is_adjusting = true;
-                state.iteration_count = 0;
-                if state.volume < 2.0 {
-                    state
+                model.iteration_count = 0;
+                if model.volume < 2.0 {
+                    model
                         .tx
-                        .send(Command::Volume(state.volume_step))
+                        .send(Command::Volume(model.volume_step))
                         .unwrap_or(());
                 }
             }
             'J' => {
-                state.is_adjusting = true;
-                state.iteration_count = 0;
-                if state.volume > 0.0 {
-                    state
+                model.iteration_count = 0;
+                if model.volume > 0.0 {
+                    model
                         .tx
-                        .send(Command::Volume(-state.volume_step))
+                        .send(Command::Volume(-model.volume_step))
                         .unwrap_or(());
                 }
             }
