@@ -3,7 +3,9 @@ use crate::button_handler::handle_playback;
 use crate::button_handler::handle_search;
 use crate::button_handler::handle_volume;
 use crate::config::Config;
+use crate::message::map_to_message;
 use crate::model::PlayerModel;
+use crate::update::update;
 use crate::utility::play_new_track;
 use crate::view::render;
 use color_eyre::eyre::Result;
@@ -16,9 +18,11 @@ use std::time::Duration;
 mod button_handler;
 mod config;
 mod fuzzy_search;
+mod message;
 mod model;
 mod order;
 mod player;
+mod update;
 mod utility;
 mod view;
 
@@ -48,10 +52,18 @@ enum State {
     Playing,
 }
 
-enum Action {
+enum Message {
     None,
     Submit,
     Escape,
+    Swap,
+    ToAdjusting,
+    SelectPrev,
+    SelectNext,
+    Shuffle,
+    Album,
+    Track,
+    Artist,
 }
 
 fn main() -> Result<()> {
@@ -86,28 +98,11 @@ fn run(mut terminal: DefaultTerminal, model: &mut PlayerModel) -> Result<()> {
                 if model.state != &State::Adjusting {
                     previous_state = model.state;
                 }
-                match model.state {
-                    State::Searching => match handle_search(key, model) {
-                        Action::Escape => model.state = &State::Playing,
-                        Action::Submit => {}
-                        Action::None => {}
-                    },
-                    State::Configuring => match handle_config(key, model) {
-                        Action::Escape => model.state = &State::Playing,
-                        Action::Submit => {}
-                        Action::None => {}
-                    },
-                    State::Playing => match handle_playback(key, model) {
-                        Action::Escape => break,
-                        Action::Submit => {}
-                        Action::None => {}
-                    },
-                    State::Adjusting => match handle_volume(key, model) {
-                        Action::Escape => break,
-                        Action::Submit => {}
-                        Action::None => {}
-                    },
-                }
+                // TODO: One method to take the 'key' and return correct message.
+                // This whole match statement should be inside that.
+
+                let message = map_to_message(key, model);
+                update(message, model);
             }
 
             // Auto-Queue
@@ -127,7 +122,6 @@ fn run(mut terminal: DefaultTerminal, model: &mut PlayerModel) -> Result<()> {
             if model.state == &State::Adjusting {
                 model.iteration_count += 1;
                 if model.iteration_count % 41 == 0 {
-                    eprintln!("{:?}", previous_state);
                     model.state = previous_state;
                     model.iteration_count = 0;
                 }

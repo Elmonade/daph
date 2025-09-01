@@ -1,93 +1,54 @@
-use crate::State;
 use crate::fuzzy_search::search;
 use crate::order::Order;
 use crate::utility::order_by;
-use crate::{Action, Command, PlayerModel, play_new_track};
+use crate::{Command, PlayerModel, play_new_track};
+use crate::{Message, State};
+use crossterm::event::Event;
 use crossterm::event::{self, KeyEvent};
 use std::path::PathBuf;
 
-pub(crate) fn handle_config(key: KeyEvent, model: &mut PlayerModel) -> Action {
+pub(crate) fn map_to_message(key: KeyEvent, model: &PlayerModel) -> Message {
+    match model.state {
+        State::Searching => from_search(key),
+        State::Configuring => from_config(key, model),
+        State::Playing => from_playback(key),
+        State::Adjusting => from_volume(key),
+    }
+}
+
+pub(crate) fn from_config(key: KeyEvent, model: &PlayerModel) -> Message {
     match key.code {
-        event::KeyCode::Tab => {
-            if model.state == &State::Playing {
-                model.state = &State::Configuring;
-            } else if model.state == &State::Configuring {
-                model.state = &State::Playing;
-            }
-        }
+        event::KeyCode::Tab => Message::Swap,
         event::KeyCode::Char(char) => match char {
-            'K' => model.state = &State::Adjusting,
-            'J' => model.state = &State::Adjusting,
-            'j' => {
-                if let Some(selected_index) = model.list_state.selected()
-                    && selected_index < 3
-                {
-                    model.list_state.select_next();
-                }
-            }
-            'k' => {
-                model.list_state.select_previous();
-            }
-            _ => {}
+            'K' => Message::ToAdjusting,
+            'J' => Message::ToAdjusting,
+            'j' => Message::SelectNext,
+            'k' => Message::SelectPrev,
+            _ => Message::None,
         },
-        event::KeyCode::Esc => {
-            return Action::Escape;
-        }
+        event::KeyCode::Esc => return Message::Escape,
         event::KeyCode::Enter => {
             if let Some(index) = model.list_state.selected() {
                 match index {
-                    0 => {
-                        if let Some(index) =
-                            order_by(&Order::Shuffle, &model.playback_order, &mut model.tracks)
-                        {
-                            model.current_track_index = Some(index);
-                            model.playback_order = Order::Shuffle;
-                        }
-                    }
-                    1 => {
-                        if let Some(index) =
-                            order_by(&Order::Album, &model.playback_order, &mut model.tracks)
-                        {
-                            model.current_track_index = Some(index);
-                            model.playback_order = Order::Album;
-                        }
-                    }
-                    2 => {
-                        if let Some(index) =
-                            order_by(&Order::Artist, &model.playback_order, &mut model.tracks)
-                        {
-                            model.current_track_index = Some(index);
-                            model.playback_order = Order::Artist;
-                        }
-                    }
-                    3 => {
-                        if let Some(index) =
-                            order_by(&Order::Track, &model.playback_order, &mut model.tracks)
-                        {
-                            model.current_track_index = Some(index);
-                            model.playback_order = Order::Track;
-                        }
-                    }
-                    _ => {
-                        if let Some(index) =
-                            order_by(&Order::Shuffle, &model.playback_order, &mut model.tracks)
-                        {
-                            model.current_track_index = Some(index);
-                            model.playback_order = Order::Shuffle;
-                        }
-                    }
-                }
+                    0 => Message::Shuffle,
+                    1 => Message::Album,
+                    2 => Message::Artist,
+                    3 => Message::Track,
+                    _ => Message::Shuffle,
+                };
             }
-            return Action::Submit;
+            return Message::Submit;
         }
-        _ => {}
+        _ => Message::None,
     };
-    Action::None
+    Message::None
 }
 
-pub(crate) fn handle_search(key: KeyEvent, model: &mut PlayerModel) -> Action {
+pub(crate) fn from_search(key: KeyEvent) -> Message {
     match key.code {
         event::KeyCode::Char(c) => {
+
+            //TODO: Just tell the update program to grab the exsiting text there.
             model.keyword.push(c);
             model.matched_tracks = search(&model.tracks, &model.keyword);
         }
@@ -96,17 +57,17 @@ pub(crate) fn handle_search(key: KeyEvent, model: &mut PlayerModel) -> Action {
             model.matched_tracks = search(&model.tracks, &model.keyword);
         }
         event::KeyCode::Esc => {
-            return Action::Escape;
+            return Message::Escape;
         }
         event::KeyCode::Enter => {
-            return Action::Submit;
+            return Message::Submit;
         }
         _ => {}
     };
-    Action::None
+    Message::None
 }
 
-pub(crate) fn handle_playback(key: KeyEvent, model: &mut PlayerModel) -> Action {
+pub(crate) fn from_playback(key: KeyEvent) -> Message {
     match key.code {
         event::KeyCode::Tab => {
             if model.state == &State::Playing {
@@ -115,7 +76,7 @@ pub(crate) fn handle_playback(key: KeyEvent, model: &mut PlayerModel) -> Action 
                 model.state = &State::Playing;
             }
         }
-        event::KeyCode::Esc => return Action::Escape,
+        event::KeyCode::Esc => return Message::Escape,
         event::KeyCode::Char(char) => match char {
             'K' => model.state = &State::Adjusting,
             'J' => model.state = &State::Adjusting,
@@ -195,10 +156,10 @@ pub(crate) fn handle_playback(key: KeyEvent, model: &mut PlayerModel) -> Action 
         },
         _ => {}
     }
-    Action::None
+    Message::None
 }
 
-pub(crate) fn handle_volume(key: KeyEvent, model: &mut PlayerModel) -> Action {
+pub(crate) fn from_volume(key: KeyEvent) -> Message {
     match key.code {
         event::KeyCode::Char(char) => match char {
             'K' => {
@@ -223,5 +184,5 @@ pub(crate) fn handle_volume(key: KeyEvent, model: &mut PlayerModel) -> Action {
         },
         _ => {}
     }
-    Action::None
+    Message::None
 }

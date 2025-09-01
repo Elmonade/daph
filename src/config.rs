@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
 
-const SEEK_DISTANCE: usize = 5;
+const SEEK_DISTANCE: usize = 10;
 const VOLUME_STEP: f32 = 0.1;
 
 #[derive(Deserialize)]
