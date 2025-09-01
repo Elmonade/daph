@@ -1,3 +1,219 @@
-pub(crate) fn update(message: Message, model: PlayerModel) {
-    todo!();
+/*
+*
+* Based on the given Message mutate the PlayerModel.
+*
+*/
+use crate::State;
+use crate::fuzzy_search::search;
+use crate::order::Order;
+use crate::utility::order_by;
+use crate::{Command, Message, PlayerModel, play_new_track};
+use std::path::PathBuf;
+
+pub(crate) fn update(message: Message, model: &mut PlayerModel) {
+    match model.state {
+        State::Searching => handle_search(message, model),
+        State::Configuring => handle_config(message, model),
+        State::Playing => handle_playback(message, model),
+        State::Adjusting => handle_volume(message, model),
+    };
+}
+
+pub(crate) fn handle_config(message: Message, model: &mut PlayerModel) -> Message {
+    match message {
+        Message::Escape => model.state = &State::Playing,
+        Message::Swap => {
+            if model.state == &State::Playing {
+                model.state = &State::Configuring;
+            } else if model.state == &State::Configuring {
+                model.state = &State::Playing;
+            }
+        }
+        Message::SwapToAdjusting => model.state = &State::Adjusting,
+        Message::Down => {
+            if let Some(selected_index) = model.list_state.selected()
+                && selected_index < 3
+            {
+                model.list_state.select_next();
+            }
+        }
+        Message::Up => model.list_state.select_previous(),
+        Message::Submit => {
+            if let Some(index) = model.list_state.selected() {
+                match index {
+                    0 => {
+                        if let Some(index) =
+                            order_by(&Order::Shuffle, &model.playback_order, &mut model.tracks)
+                        {
+                            model.current_track_index = Some(index);
+                            model.playback_order = Order::Shuffle;
+                        }
+                    }
+                    1 => {
+                        if let Some(index) =
+                            order_by(&Order::Album, &model.playback_order, &mut model.tracks)
+                        {
+                            model.current_track_index = Some(index);
+                            model.playback_order = Order::Album;
+                        }
+                    }
+                    2 => {
+                        if let Some(index) =
+                            order_by(&Order::Artist, &model.playback_order, &mut model.tracks)
+                        {
+                            model.current_track_index = Some(index);
+                            model.playback_order = Order::Artist;
+                        }
+                    }
+                    3 => {
+                        if let Some(index) =
+                            order_by(&Order::Track, &model.playback_order, &mut model.tracks)
+                        {
+                            model.current_track_index = Some(index);
+                            model.playback_order = Order::Track;
+                        }
+                    }
+                    _ => {
+                        if let Some(index) =
+                            order_by(&Order::Shuffle, &model.playback_order, &mut model.tracks)
+                        {
+                            model.current_track_index = Some(index);
+                            model.playback_order = Order::Shuffle;
+                        }
+                    }
+                }
+            }
+            return Message::Submit;
+        }
+        _ => {}
+    };
+    Message::None
+}
+
+pub(crate) fn handle_search(message: Message, model: &mut PlayerModel) -> Message {
+    match message {
+        Message::AppendKeyword(c) => {
+            model.keyword.push(c);
+            model.matched_tracks = search(&model.tracks, &model.keyword);
+        }
+        Message::RemoveKeyword => {
+            model.keyword.pop();
+            model.matched_tracks = search(&model.tracks, &model.keyword);
+        }
+        Message::Escape => model.state = &State::Playing,
+        Message::Submit => model.state = &State::Playing,
+        _ => (),
+    };
+    Message::None
+}
+
+pub(crate) fn handle_playback(message: Message, model: &mut PlayerModel) -> Message {
+    match message {
+        Message::Swap => {
+            if model.state == &State::Playing {
+                model.state = &State::Configuring;
+            } else if model.state == &State::Configuring {
+                model.state = &State::Playing;
+            }
+        }
+        Message::Escape => std::process::exit(0),
+        Message::SwapToAdjusting => model.state = &State::Adjusting,
+        Message::SwapToSearching => model.state = &State::Searching,
+        Message::PlayPause => {
+            model
+                .tx
+                .send(Command::PlayPause(PathBuf::new()))
+                .unwrap_or(());
+        }
+        Message::AppendTrack => {
+            if let Some(index) = model.table_state.selected() {
+                match model.current_track_index {
+                    Some(current_index) => {
+                        if index == current_index {
+                            model
+                                .tx
+                                .send(Command::PlayPause(PathBuf::new()))
+                                .unwrap_or(());
+                        } else {
+                            model.tracks[current_index].is_playing = false;
+                            play_new_track(index, model);
+                        }
+                    }
+                    None => {
+                        play_new_track(index, model);
+                    }
+                }
+            }
+        }
+        Message::Delete => {
+            // TODO: Implement.
+            if let Some(index) = model.table_state.selected() {
+                model.tracks.remove(index);
+            }
+        }
+        Message::Down => {
+            if let Some(selected_index) = model.table_state.selected()
+                && selected_index < model.number_of_tracks - 1
+            {
+                model.table_state.select_next();
+            }
+        }
+        Message::Up => model.table_state.select_previous(),
+        Message::Previous => {
+            if let Some(mut index) = model.current_track_index {
+                model.tracks[index].is_playing = false;
+                index = (index + model.number_of_tracks - 1) % model.number_of_tracks;
+                play_new_track(index, model);
+            }
+        }
+        Message::Next => {
+            if let Some(mut index) = model.current_track_index {
+                model.tracks[index].is_playing = false;
+                index = (index + 1) % model.number_of_tracks;
+                play_new_track(index, model);
+            }
+        }
+        Message::SeekBack => {
+            model
+                .tx
+                .send(Command::Backward(model.seek_distance))
+                .unwrap_or(());
+        }
+        Message::SeekForward => {
+            if let Some(index) = model.current_track_index {
+                let length = model.tracks[index].length;
+                model
+                    .tx
+                    .send(Command::Forward(model.seek_distance, length as usize))
+                    .unwrap_or(());
+            }
+        }
+        _ => (),
+    }
+    Message::None
+}
+
+pub(crate) fn handle_volume(message: Message, model: &mut PlayerModel) -> Message {
+    match message {
+        Message::Up => {
+            model.iteration_count = 0;
+            if model.volume < 2.0 {
+                model
+                    .tx
+                    .send(Command::Volume(model.volume_step))
+                    .unwrap_or(());
+            }
+        }
+        Message::Down => {
+            model.iteration_count = 0;
+            if model.volume > 0.0 {
+                model
+                    .tx
+                    .send(Command::Volume(-model.volume_step))
+                    .unwrap_or(());
+            }
+        }
+        _ => (),
+    }
+    Message::None
 }

@@ -1,7 +1,3 @@
-use crate::button_handler::handle_config;
-use crate::button_handler::handle_playback;
-use crate::button_handler::handle_search;
-use crate::button_handler::handle_volume;
 use crate::config::Config;
 use crate::message::map_to_message;
 use crate::model::PlayerModel;
@@ -15,7 +11,6 @@ use ratatui::DefaultTerminal;
 use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::time::Duration;
-mod button_handler;
 mod config;
 mod fuzzy_search;
 mod message;
@@ -25,6 +20,32 @@ mod player;
 mod update;
 mod utility;
 mod view;
+
+// Total set of commands which player can respond to.
+#[derive(Debug)]
+enum Message {
+    None,
+    Submit,
+    Escape,
+
+    Swap,
+    SwapToAdjusting,
+    SwapToSearching,
+
+    AppendKeyword(char),
+    RemoveKeyword,
+
+    Delete,
+    SeekBack,
+    SeekForward,
+    PlayPause,
+    AppendTrack,
+
+    Up,
+    Down,
+    Next,
+    Previous,
+}
 
 #[derive(Debug, Clone)]
 struct Audio {
@@ -50,20 +71,6 @@ enum State {
     Configuring,
     Adjusting,
     Playing,
-}
-
-enum Message {
-    None,
-    Submit,
-    Escape,
-    Swap,
-    ToAdjusting,
-    SelectPrev,
-    SelectNext,
-    Shuffle,
-    Album,
-    Track,
-    Artist,
 }
 
 fn main() -> Result<()> {
@@ -98,9 +105,6 @@ fn run(mut terminal: DefaultTerminal, model: &mut PlayerModel) -> Result<()> {
                 if model.state != &State::Adjusting {
                     previous_state = model.state;
                 }
-                // TODO: One method to take the 'key' and return correct message.
-                // This whole match statement should be inside that.
-
                 let message = map_to_message(key, model);
                 update(message, model);
             }
@@ -128,5 +132,4 @@ fn run(mut terminal: DefaultTerminal, model: &mut PlayerModel) -> Result<()> {
             }
         }
     }
-    Ok(())
 }
