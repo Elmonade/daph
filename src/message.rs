@@ -35,9 +35,9 @@ pub(crate) fn from_config(key: KeyEvent) -> Message {
 
 pub(crate) fn from_search(key: KeyEvent) -> Message {
     match key.code {
-        event::KeyCode::Char(c) => Message::AppendKeyword(c),
-        event::KeyCode::Backspace => Message::RemoveKeyword,
-        event::KeyCode::Esc => Message::Escape,
+        event::KeyCode::Char(c) => return Message::AppendKeyword(c),
+        event::KeyCode::Backspace => return Message::RemoveKeyword,
+        event::KeyCode::Esc => return Message::Escape,
         event::KeyCode::Enter => return Message::Submit,
         _ => Message::None,
     };
