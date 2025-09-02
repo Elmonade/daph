@@ -1,5 +1,5 @@
 use crate::Audio;
-use crate::Command;
+use crate::update::Command;
 use crate::Config;
 use crate::State;
 use crate::order::Order;

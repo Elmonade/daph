@@ -1,12 +1,13 @@
-use super::*;
+use crate::Audio;
+use crate::PlayerModel;
 use crate::order::Order;
-use rand::Rng;
-use walkdir::WalkDir;
-
-use lofty::read_from_path;
-
+use crate::update::Command;
 use lofty::file::{AudioFile, TaggedFileExt};
+use lofty::read_from_path;
 use lofty::tag::Accessor;
+use rand::Rng;
+use std::path::PathBuf;
+use walkdir::WalkDir;
 
 pub(crate) fn load_audio(path: PathBuf) -> (usize, Vec<Audio>) {
     let mut tracks = Vec::new();

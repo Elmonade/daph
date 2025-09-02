@@ -53,15 +53,6 @@ struct Audio {
     path: PathBuf,
 }
 
-#[derive(Debug)]
-pub(crate) enum Command {
-    PlayPause(PathBuf),
-    New(PathBuf),
-    Forward(usize, usize),
-    Backward(usize),
-    Volume(f32),
-}
-
 #[derive(PartialEq, Debug)]
 enum State {
     Searching,

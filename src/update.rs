@@ -7,8 +7,18 @@ use crate::State;
 use crate::fuzzy_search::search;
 use crate::order::Order;
 use crate::utility::order_by;
-use crate::{Command, Message, PlayerModel, play_new_track};
+use crate::{Message, PlayerModel, play_new_track};
 use std::path::PathBuf;
+
+#[derive(Debug)]
+pub(crate) enum Command {
+    PlayPause(PathBuf),
+    New(PathBuf),
+    Forward(usize, usize),
+    Backward(usize),
+    Volume(f32),
+}
+
 
 pub(crate) fn update(message: Message, model: &mut PlayerModel) {
     match model.state {
