@@ -18,10 +18,10 @@ pub(crate) fn map_to_message(key: KeyEvent, model: &PlayerModel) -> Message {
 
 pub(crate) fn from_config(key: KeyEvent) -> Message {
     match key.code {
-        event::KeyCode::Tab => return Message::Swap,
+        event::KeyCode::Tab => return Message::SwapTo(State::Adjusting),
         event::KeyCode::Char(char) => match char {
-            'K' => return Message::SwapToAdjusting,
-            'J' => return Message::SwapToAdjusting,
+            'K' => return Message::SwapTo(State::Adjusting),
+            'J' => return Message::SwapTo(State::Adjusting),
             'j' => return Message::Down,
             'k' => return Message::Up,
             _ => Message::None,
@@ -47,9 +47,9 @@ pub(crate) fn from_search(key: KeyEvent) -> Message {
 pub(crate) fn from_playback(key: KeyEvent) -> Message {
     match key.code {
         event::KeyCode::Char(char) => match char {
-            'K' => return Message::SwapToAdjusting,
-            'J' => return Message::SwapToAdjusting,
-            '/' => return Message::SwapToSearching,
+            'K' => return Message::SwapTo(State::Adjusting),
+            'J' => return Message::SwapTo(State::Adjusting),
+            '/' => return Message::SwapTo(State::Searching),
             ' ' => return Message::PlayPause,
             ':' => return Message::AppendTrack,
             'D' => return Message::Delete,
@@ -61,7 +61,7 @@ pub(crate) fn from_playback(key: KeyEvent) -> Message {
             '>' => return Message::SeekForward,
             _ => Message::None,
         },
-        event::KeyCode::Tab => return Message::Swap,
+        event::KeyCode::Tab => return Message::SwapTo(State::Playing),
         event::KeyCode::Esc => return Message::Escape,
         _ => Message::None,
     };

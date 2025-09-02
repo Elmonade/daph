@@ -28,10 +28,6 @@ enum Message {
     Submit,
     Escape,
 
-    Swap,
-    SwapToAdjusting,
-    SwapToSearching,
-
     AppendKeyword(char),
     RemoveKeyword,
 
@@ -45,6 +41,7 @@ enum Message {
     Down,
     Next,
     Previous,
+    SwapTo(State),
 }
 
 #[derive(Debug, Clone)]

@@ -22,14 +22,16 @@ pub(crate) fn update(message: Message, model: &mut PlayerModel) {
 pub(crate) fn handle_config(message: Message, model: &mut PlayerModel) -> Message {
     match message {
         Message::Escape => model.state = &State::Playing,
-        Message::Swap => {
+        Message::SwapTo(State::Playing) => {
             if model.state == &State::Playing {
                 model.state = &State::Configuring;
             } else if model.state == &State::Configuring {
                 model.state = &State::Playing;
             }
         }
-        Message::SwapToAdjusting => model.state = &State::Adjusting,
+        //TODO: Does not live long enough.
+        //Message::SwapTo(state) => model.state = &state,
+        Message::SwapTo(State::Adjusting) => model.state = &State::Adjusting,
         Message::Down => {
             if let Some(selected_index) = model.list_state.selected()
                 && selected_index < 3
@@ -109,7 +111,7 @@ pub(crate) fn handle_search(message: Message, model: &mut PlayerModel) -> Messag
 
 pub(crate) fn handle_playback(message: Message, model: &mut PlayerModel) -> Message {
     match message {
-        Message::Swap => {
+        Message::SwapTo(State::Playing) => {
             if model.state == &State::Playing {
                 model.state = &State::Configuring;
             } else if model.state == &State::Configuring {
@@ -117,8 +119,8 @@ pub(crate) fn handle_playback(message: Message, model: &mut PlayerModel) -> Mess
             }
         }
         Message::Escape => std::process::exit(0),
-        Message::SwapToAdjusting => model.state = &State::Adjusting,
-        Message::SwapToSearching => model.state = &State::Searching,
+        Message::SwapTo(State::Adjusting) => model.state = &State::Adjusting,
+        Message::SwapTo(State::Searching) => model.state = &State::Searching,
         Message::PlayPause => {
             model
                 .tx
