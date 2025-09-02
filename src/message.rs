@@ -18,7 +18,7 @@ pub(crate) fn map_to_message(key: KeyEvent, model: &PlayerModel) -> Message {
 
 pub(crate) fn from_config(key: KeyEvent) -> Message {
     match key.code {
-        event::KeyCode::Tab => return Message::SwapTo(State::Adjusting),
+        event::KeyCode::Tab => return Message::SwapTo(State::Playing),
         event::KeyCode::Char(char) => match char {
             'K' => return Message::SwapTo(State::Adjusting),
             'J' => return Message::SwapTo(State::Adjusting),
