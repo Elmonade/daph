@@ -1,3 +1,4 @@
+use crate::update::Command;
 use rodio::{Decoder, OutputStream, Sink};
 use std::{
     fs::File,
@@ -7,8 +8,6 @@ use std::{
     thread,
     time::{self, Duration},
 };
-
-use crate::Command;
 
 pub(crate) struct SinkModel {
     pub is_playing: bool,

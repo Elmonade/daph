@@ -1,7 +1,7 @@
 use crate::Audio;
-use crate::State;
+use crate::update::Command;
 use crate::Config;
-use crate::Command;
+use crate::State;
 use crate::order::Order;
 use crate::player::SinkModel;
 use crate::utility::load_audio;
@@ -10,7 +10,6 @@ use ratatui::widgets::TableState;
 use std::sync::mpsc::{self, Receiver, Sender};
 
 pub(crate) struct PlayerModel<'a> {
-
     pub state: &'a State,
 
     pub tracks: Vec<Audio>,

@@ -1,9 +1,7 @@
-use crate::button_handler::handle_config;
-use crate::button_handler::handle_playback;
-use crate::button_handler::handle_search;
-use crate::button_handler::handle_volume;
 use crate::config::Config;
+use crate::message::map_to_message;
 use crate::model::PlayerModel;
+use crate::update::update;
 use crate::utility::play_new_track;
 use crate::view::render;
 use color_eyre::eyre::Result;
@@ -13,14 +11,38 @@ use ratatui::DefaultTerminal;
 use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::time::Duration;
-mod button_handler;
 mod config;
 mod fuzzy_search;
+mod message;
 mod model;
 mod order;
 mod player;
+mod update;
 mod utility;
 mod view;
+
+// Total set of commands which player can respond to.
+#[derive(Debug)]
+enum Message {
+    None,
+    Submit,
+    Escape,
+
+    AppendKeyword(char),
+    RemoveKeyword,
+
+    Delete,
+    SeekBack,
+    SeekForward,
+    PlayPause,
+    AppendTrack,
+
+    Up,
+    Down,
+    Next,
+    Previous,
+    SwapTo(State),
+}
 
 #[derive(Debug, Clone)]
 struct Audio {
@@ -31,27 +53,12 @@ struct Audio {
     path: PathBuf,
 }
 
-#[derive(Debug)]
-pub(crate) enum Command {
-    PlayPause(PathBuf),
-    New(PathBuf),
-    Forward(usize, usize),
-    Backward(usize),
-    Volume(f32),
-}
-
 #[derive(PartialEq, Debug)]
 enum State {
     Searching,
     Configuring,
     Adjusting,
     Playing,
-}
-
-enum Action {
-    None,
-    Submit,
-    Escape,
 }
 
 fn main() -> Result<()> {
@@ -86,28 +93,8 @@ fn run(mut terminal: DefaultTerminal, model: &mut PlayerModel) -> Result<()> {
                 if model.state != &State::Adjusting {
                     previous_state = model.state;
                 }
-                match model.state {
-                    State::Searching => match handle_search(key, model) {
-                        Action::Escape => model.state = &State::Playing,
-                        Action::Submit => {}
-                        Action::None => {}
-                    },
-                    State::Configuring => match handle_config(key, model) {
-                        Action::Escape => model.state = &State::Playing,
-                        Action::Submit => {}
-                        Action::None => {}
-                    },
-                    State::Playing => match handle_playback(key, model) {
-                        Action::Escape => break,
-                        Action::Submit => {}
-                        Action::None => {}
-                    },
-                    State::Adjusting => match handle_volume(key, model) {
-                        Action::Escape => break,
-                        Action::Submit => {}
-                        Action::None => {}
-                    },
-                }
+                let message = map_to_message(key, model);
+                update(message, model);
             }
 
             // Auto-Queue
@@ -127,12 +114,10 @@ fn run(mut terminal: DefaultTerminal, model: &mut PlayerModel) -> Result<()> {
             if model.state == &State::Adjusting {
                 model.iteration_count += 1;
                 if model.iteration_count % 41 == 0 {
-                    eprintln!("{:?}", previous_state);
                     model.state = previous_state;
                     model.iteration_count = 0;
                 }
             }
         }
     }
-    Ok(())
 }
