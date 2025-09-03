@@ -19,29 +19,28 @@ pub(crate) enum Command {
     Volume(f32),
 }
 
-
-pub(crate) fn update(message: Message, model: &mut PlayerModel) {
+pub(crate) fn update<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>) {
     match model.state {
-        State::Searching => handle_search(message, model),
-        State::Configuring => handle_config(message, model),
-        State::Playing => handle_playback(message, model),
-        State::Adjusting => handle_volume(message, model),
+        State::Searching => in_search(message, model),
+        State::Configuring => in_config(message, model),
+        State::Playing => in_playback(message, model),
+        State::Adjusting => in_volume(message, model),
     };
 }
 
-pub(crate) fn handle_config(message: Message, model: &mut PlayerModel) -> Message {
+pub(crate) fn in_config<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>) -> Message<'a> {
     match message {
         Message::Escape => model.state = &State::Playing,
-        Message::SwapTo(State::Playing) => {
-            if model.state == &State::Playing {
-                model.state = &State::Configuring;
-            } else if model.state == &State::Configuring {
-                model.state = &State::Playing;
+        Message::SwapTo(state) => match state {
+            Some(state) => model.state = state,
+            None => {
+                if model.state == &State::Playing {
+                    model.state = &State::Configuring;
+                } else if model.state == &State::Configuring {
+                    model.state = &State::Playing;
+                }
             }
-        }
-        //TODO: Does not live long enough.
-        //Message::SwapTo(state) => model.state = &state,
-        Message::SwapTo(State::Adjusting) => model.state = &State::Adjusting,
+        },
         Message::Down => {
             if let Some(selected_index) = model.list_state.selected()
                 && selected_index < 3
@@ -102,10 +101,10 @@ pub(crate) fn handle_config(message: Message, model: &mut PlayerModel) -> Messag
     Message::None
 }
 
-pub(crate) fn handle_search(message: Message, model: &mut PlayerModel) -> Message {
+pub(crate) fn in_search<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>) -> Message<'a> {
     match message {
         Message::AppendKeyword(c) => {
-            model.keyword.push(c);
+            model.keyword.push(*c);
             model.matched_tracks = search(&model.tracks, &model.keyword);
         }
         Message::RemoveKeyword => {
@@ -119,18 +118,19 @@ pub(crate) fn handle_search(message: Message, model: &mut PlayerModel) -> Messag
     Message::None
 }
 
-pub(crate) fn handle_playback(message: Message, model: &mut PlayerModel) -> Message {
+pub(crate) fn in_playback<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>) -> Message<'a> {
     match message {
-        Message::SwapTo(State::Playing) => {
-            if model.state == &State::Playing {
-                model.state = &State::Configuring;
-            } else if model.state == &State::Configuring {
-                model.state = &State::Playing;
+        Message::SwapTo(state) => match state {
+            Some(state) => model.state = state,
+            None => {
+                if model.state == &State::Playing {
+                    model.state = &State::Configuring;
+                } else if model.state == &State::Configuring {
+                    model.state = &State::Playing;
+                }
             }
-        }
+        },
         Message::Escape => std::process::exit(0),
-        Message::SwapTo(State::Adjusting) => model.state = &State::Adjusting,
-        Message::SwapTo(State::Searching) => model.state = &State::Searching,
         Message::PlayPause => {
             model
                 .tx
@@ -205,7 +205,7 @@ pub(crate) fn handle_playback(message: Message, model: &mut PlayerModel) -> Mess
     Message::None
 }
 
-pub(crate) fn handle_volume(message: Message, model: &mut PlayerModel) -> Message {
+pub(crate) fn in_volume<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>) -> Message<'a> {
     match message {
         Message::Up => {
             model.iteration_count = 0;

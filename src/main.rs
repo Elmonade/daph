@@ -23,7 +23,7 @@ mod view;
 
 // Total set of commands which player can respond to.
 #[derive(Debug)]
-enum Message {
+enum Message<'a> {
     None,
     Submit,
     Escape,
@@ -41,7 +41,15 @@ enum Message {
     Down,
     Next,
     Previous,
-    SwapTo(State),
+    SwapTo(Option<&'a State>),
+}
+
+#[derive(PartialEq, Debug)]
+enum State {
+    Searching,
+    Configuring,
+    Adjusting,
+    Playing,
 }
 
 #[derive(Debug, Clone)]
@@ -51,14 +59,6 @@ struct Audio {
     author: String,
     length: u64,
     path: PathBuf,
-}
-
-#[derive(PartialEq, Debug)]
-enum State {
-    Searching,
-    Configuring,
-    Adjusting,
-    Playing,
 }
 
 fn main() -> Result<()> {
@@ -94,7 +94,7 @@ fn run(mut terminal: DefaultTerminal, model: &mut PlayerModel) -> Result<()> {
                     previous_state = model.state;
                 }
                 let message = map_to_message(key, model);
-                update(message, model);
+                update(&message, model);
             }
 
             // Auto-Queue
