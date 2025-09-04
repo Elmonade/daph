@@ -1,5 +1,3 @@
-
-A music player in the terminal.
 <p align="center">
   <img height="200" alt="IMG_1388" src="https://github.com/user-attachments/assets/9d7b47c3-57a7-4b67-8219-56d62e60945c" />
 </p>
