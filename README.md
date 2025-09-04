@@ -33,5 +33,7 @@ The search and delete functionalities are still under construction.
 
 Supports MP3, FLAC, and WAV audio files.
 Control scheme and supported file formats are subject to change. 
+## Example
+<img width="4813" height="2016" alt="image" src="https://github.com/user-attachments/assets/f033ff42-05eb-4c4b-91d8-e22bc2aec789" />
 
-Written by a mere mortals.
+*- Written by mere mortals*
