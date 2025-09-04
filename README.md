@@ -1,6 +1,8 @@
-<img width="100" height="100" alt="logo" src="https://github.com/user-attachments/assets/7a99012c-2f55-40b3-9019-a53204ba594a"/> 
 
 A music player in the terminal.
+<p align="center">
+  <img height="200" alt="IMG_1388" src="https://github.com/user-attachments/assets/9d7b47c3-57a7-4b67-8219-56d62e60945c" />
+</p>
 
 ## Structure
 Here, [TEA](https://guide.elm-lang.org/architecture/) is the way. Each user input is mapped to a set of pre-defined commands the player can understand. The command is then sent to the `update` method which modifies the `model`. Finally, the `view` reflects the changes.  
