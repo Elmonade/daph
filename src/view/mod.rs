@@ -1,9 +1,9 @@
+// Lemonn lemon. Hello, hellllo.
 use crate::Audio;
 use crate::PlayerModel;
 use crate::SinkModel;
 use crate::State;
 use number_drawer::NumberDrawer;
-use ratatui::symbols::scrollbar;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Flex;
@@ -68,6 +68,7 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
 
     let table = view_utility::create_table(&model.tracks);
     let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+        .thumb_style(Style::default().fg(Color::Green))
         .begin_symbol(None)
         .thumb_symbol("|")
         .track_symbol(None)
@@ -81,7 +82,7 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
         }));
 
     let mut table_model = model.table_state.clone();
-    let mut scrollbar_state = model.scrollbar_state.clone();
+    let mut scrollbar_state = model.scrollbar_state;
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(dolphin, right_bottom);
     frame.render_stateful_widget(table, music_list_area, &mut table_model);
