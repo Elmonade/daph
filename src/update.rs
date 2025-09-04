@@ -168,9 +168,15 @@ pub(crate) fn in_playback<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>
                 && selected_index < model.number_of_tracks - 1
             {
                 model.table_state.select_next();
+                model.scrollbar_state = model.scrollbar_state.position(selected_index);
             }
         }
-        Message::Up => model.table_state.select_previous(),
+        Message::Up => {
+            model.table_state.select_previous();
+            if let Some(selected_index) = model.table_state.selected() {
+                model.scrollbar_state = model.scrollbar_state.position(selected_index);
+            }
+        }
         Message::Previous => {
             if let Some(mut index) = model.current_track_index {
                 model.tracks[index].is_playing = false;

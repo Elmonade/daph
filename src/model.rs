@@ -1,11 +1,12 @@
 use crate::Audio;
-use crate::update::Command;
 use crate::Config;
 use crate::State;
 use crate::order::Order;
 use crate::player::SinkModel;
+use crate::update::Command;
 use crate::utility::load_audio;
 use ratatui::widgets::ListState;
+use ratatui::widgets::ScrollbarState;
 use ratatui::widgets::TableState;
 use std::sync::mpsc::{self, Receiver, Sender};
 
@@ -18,6 +19,7 @@ pub(crate) struct PlayerModel<'a> {
 
     pub table_state: TableState,
     pub list_state: ListState,
+    pub scrollbar_state: ScrollbarState,
 
     pub tx: Sender<Command>,
     pub sink_rx: Receiver<SinkModel>,
@@ -66,6 +68,7 @@ impl PlayerModel<'_> {
             playback_order: Order::Artist,
             seek_distance: config.seek_distance,
             volume_step: config.volume_step,
+            scrollbar_state: ScrollbarState::new(number_of_tracks).position(0),
         }
     }
 }
