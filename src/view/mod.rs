@@ -7,7 +7,6 @@ use number_drawer::NumberDrawer;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Flex;
-use ratatui::layout::Margin;
 use ratatui::layout::Rect;
 use ratatui::layout::{Constraint, Layout};
 use ratatui::style::palette::tailwind;
@@ -47,19 +46,36 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
             .areas(frame.area());
     }
 
-    let [left_top, left_bottom] =
-        Layout::vertical([Constraint::Fill(1), Constraint::Percentage(12)])
-            .margin(2)
+    let [mut left_top, mut left_bottom] =
+        Layout::vertical([Constraint::Fill(1), Constraint::Length(6)])
+            .horizontal_margin(2)
+            .vertical_margin(0)
             .areas(left);
 
-    let [right_top, right_bottom] =
+    let [mut right_top, mut right_bottom] =
         Layout::vertical([Constraint::Fill(1), Constraint::Percentage(75)])
             .margin(2)
             .areas(right);
 
+    if frame.area().height < 14 {
+        [left_top, left_bottom] =
+            Layout::vertical([Constraint::Percentage(0), Constraint::Fill(1)])
+                .horizontal_margin(2)
+                .vertical_margin(0)
+                .areas(left);
+        [right_top, right_bottom] =
+            Layout::vertical([Constraint::Fill(1), Constraint::Percentage(0)])
+                .margin(2)
+                .areas(right);
+    }
+
+    // It is impossible to set top-margin independently, thus manual padding.
+    let [_padding, left_top_padded] =
+        Layout::vertical([Constraint::Length(2), Constraint::Fill(1)]).areas(left_top);
+
     let [music_list_area] = Layout::vertical([Constraint::Fill(1)])
         .margin(1)
-        .areas(left_top);
+        .areas(left_top_padded);
 
     let left_top_block = Block::bordered()
         .title("LIBRARY")
@@ -69,7 +85,7 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
     let table = view_utility::create_table(&model.tracks);
     let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
         .thumb_style(Style::default().fg(Color::Green))
-        .begin_symbol(None)
+        .begin_symbol(Some(" "))
         .thumb_symbol("|")
         .track_symbol(None)
         .end_symbol(None);
@@ -81,27 +97,23 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
             bottom: (0),
         }));
 
+    let mut index = 8; // Point at something on startup.
+    if let Some(current_index) = model.current_track_index {
+        index = current_index;
+    }
     let mut table_model = model.table_state.clone();
     let mut scrollbar_state = model.scrollbar_state;
-    frame.render_widget(left_top_block, left_top);
+    frame.render_widget(left_top_block, left_top_padded);
     frame.render_widget(dolphin, right_bottom);
     frame.render_stateful_widget(table, music_list_area, &mut table_model);
-    frame.render_stateful_widget(
-        scrollbar,
-        music_list_area.inner(Margin {
-            // using an inner vertical margin of 1 unit makes the scrollbar inside the block
-            vertical: 0,
-            horizontal: 0,
-        }),
-        &mut scrollbar_state,
-    );
+    frame.render_stateful_widget(scrollbar, music_list_area, &mut scrollbar_state);
 
     if model.state == &State::Searching {
         search_window::draw(model, right, frame)
     }
     if model.state == &State::Adjusting {
-        volume_window::draw(sink.volume, left_top, frame)
+        volume_window::draw(sink.volume, left_top_padded, frame)
     }
     config_window::draw(model, right_top, frame);
-    player_window::draw(sink, model, left_bottom, frame);
+    player_window::draw(index, sink, model, left_bottom, frame);
 }

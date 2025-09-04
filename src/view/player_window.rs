@@ -14,7 +14,13 @@ use crate::{
     view::{CUSTOM_LABEL_COLOR, view_utility},
 };
 
-pub fn draw(sink: &SinkModel, model: &PlayerModel, left_bottom: Rect, frame: &mut Frame) {
+pub fn draw(
+    index: usize,
+    sink: &SinkModel,
+    model: &PlayerModel,
+    left_bottom: Rect,
+    frame: &mut Frame,
+) {
     let [player_area_left, player_area, player_area_right] = Layout::horizontal([
         Constraint::Percentage(10),
         Constraint::Percentage(80),
@@ -47,12 +53,6 @@ pub fn draw(sink: &SinkModel, model: &PlayerModel, left_bottom: Rect, frame: &mu
         true => CUSTOM_LABEL_COLOR,
         false => Color::Gray,
     };
-
-    let mut index = 8; // Point at something on startup.
-
-    if let Some(current_index) = model.current_track_index {
-        index = current_index;
-    }
 
     if let Some(music) = model.tracks.get(index) {
         let progress_bar_style = Style::new().italic().bold().fg(player_color);
