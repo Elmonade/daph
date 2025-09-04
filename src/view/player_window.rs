@@ -23,6 +23,7 @@ pub fn draw(sink: &SinkModel, model: &PlayerModel, left_bottom: Rect, frame: &mu
     .flex(ratatui::layout::Flex::Center)
     .margin(0)
     .areas(left_bottom);
+
     let [progress_bar] = Layout::horizontal([Constraint::Fill(1)])
         .margin(1)
         .flex(ratatui::layout::Flex::Center)
@@ -34,12 +35,14 @@ pub fn draw(sink: &SinkModel, model: &PlayerModel, left_bottom: Rect, frame: &mu
         top: (2),
         bottom: (0),
     });
+
     let total_time_block = Block::default().borders(Borders::NONE).padding(Padding {
         left: (0),
         right: (0),
         top: (2),
         bottom: (0),
     });
+
     let player_color = match sink.is_playing {
         true => CUSTOM_LABEL_COLOR,
         false => Color::Gray,

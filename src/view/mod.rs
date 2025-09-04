@@ -3,9 +3,11 @@ use crate::PlayerModel;
 use crate::SinkModel;
 use crate::State;
 use number_drawer::NumberDrawer;
+use ratatui::symbols::scrollbar;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Flex;
+use ratatui::layout::Margin;
 use ratatui::layout::Rect;
 use ratatui::layout::{Constraint, Layout};
 use ratatui::style::palette::tailwind;
@@ -15,6 +17,8 @@ use ratatui::text::Span;
 use ratatui::widgets::Borders;
 use ratatui::widgets::LineGauge;
 use ratatui::widgets::Paragraph;
+use ratatui::widgets::Scrollbar;
+use ratatui::widgets::ScrollbarOrientation;
 use ratatui::widgets::Widget;
 use ratatui::widgets::{Block, BorderType, Padding};
 use ratatui::widgets::{Row, Table};
@@ -63,6 +67,11 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
         .fg(Color::Yellow);
 
     let table = view_utility::create_table(&model.tracks);
+    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+        .begin_symbol(None)
+        .thumb_symbol("|")
+        .track_symbol(None)
+        .end_symbol(None);
     let dolphin =
         Paragraph::new(NumberDrawer::draw("bird")).block(Block::default().padding(Padding {
             left: (20),
@@ -72,23 +81,26 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
         }));
 
     let mut table_model = model.table_state.clone();
+    let mut scrollbar_state = model.scrollbar_state.clone();
     frame.render_widget(left_top_block, left_top);
     frame.render_widget(dolphin, right_bottom);
     frame.render_stateful_widget(table, music_list_area, &mut table_model);
+    frame.render_stateful_widget(
+        scrollbar,
+        music_list_area.inner(Margin {
+            // using an inner vertical margin of 1 unit makes the scrollbar inside the block
+            vertical: 0,
+            horizontal: 0,
+        }),
+        &mut scrollbar_state,
+    );
 
-    // Config Section
-    config_window::draw(model, right_top, frame);
-
-    // Search Section
     if model.state == &State::Searching {
-        search_window::draw(model, right, frame);
+        search_window::draw(model, right, frame)
     }
-
-    // Volume Section
     if model.state == &State::Adjusting {
-        volume_window::draw(sink.volume, left_top, frame);
+        volume_window::draw(sink.volume, left_top, frame)
     }
-
-    // Player Section
+    config_window::draw(model, right_top, frame);
     player_window::draw(sink, model, left_bottom, frame);
 }
