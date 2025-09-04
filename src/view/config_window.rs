@@ -1,6 +1,6 @@
 use ratatui::{
     Frame,
-    layout::Rect,
+    layout::{Constraint, Margin, Rect},
     style::{Color, Modifier, Style, Stylize},
     text::Span,
     widgets::{Block, Borders, Padding},
@@ -12,9 +12,19 @@ pub fn draw(model: &PlayerModel, right_top: Rect, frame: &mut Frame) {
     let mut list_model = model.list_state.clone();
     let settings = Block::default()
         .fg(Color::Green)
-        .padding(Padding::uniform(4))
+        .padding(Padding::uniform(1))
         .title("PLAYBACK ORDER")
         .borders(Borders::TOP | Borders::BOTTOM);
+    let inner_area = right_top.inner(Margin {
+        horizontal: (1),
+        vertical: (1),
+    });
+
+    let centered_area = view_utility::center(
+        inner_area,
+        Constraint::Percentage(40),
+        Constraint::Percentage(40),
+    );
     let highlight = if model.state == &State::Configuring {
         Style::new().reversed()
     } else {
@@ -42,5 +52,5 @@ pub fn draw(model: &PlayerModel, right_top: Rect, frame: &mut Frame) {
         .collect();
 
     let list = view_utility::create_list(rows, highlight);
-    frame.render_stateful_widget(list.block(settings), right_top, &mut list_model);
+    frame.render_stateful_widget(list.block(settings), inner_area, &mut list_model);
 }

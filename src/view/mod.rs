@@ -37,19 +37,16 @@ const GAUGE_COLOR: Color = tailwind::GREEN.c800;
 pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
     let [mut left, mut right] =
         Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(25)])
-            .margin(0)
             .areas(frame.area());
 
     if frame.area().width < 120 {
         [left, right] = Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(0)])
-            .margin(0)
             .areas(frame.area());
     }
 
     let [mut left_top, mut left_bottom] =
         Layout::vertical([Constraint::Fill(1), Constraint::Length(6)])
             .horizontal_margin(2)
-            .vertical_margin(0)
             .areas(left);
 
     let [mut right_top, mut right_bottom] =
@@ -60,12 +57,14 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
     if frame.area().height < 14 {
         [left_top, left_bottom] =
             Layout::vertical([Constraint::Percentage(0), Constraint::Fill(1)])
-                .horizontal_margin(2)
-                .vertical_margin(0)
+                .vertical_margin(2)
                 .areas(left);
+    }
+    if frame.area().height < 30 {
         [right_top, right_bottom] =
             Layout::vertical([Constraint::Fill(1), Constraint::Percentage(0)])
-                .margin(2)
+                .flex(Flex::Center)
+                .vertical_margin(2)
                 .areas(right);
     }
 
