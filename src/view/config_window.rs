@@ -15,16 +15,18 @@ pub fn draw(model: &PlayerModel, right_top: Rect, frame: &mut Frame) {
         .padding(Padding::uniform(1))
         .title("PLAYBACK ORDER")
         .borders(Borders::TOP | Borders::BOTTOM);
+    let list_container = Block::default().borders(Borders::NONE);
     let inner_area = right_top.inner(Margin {
-        horizontal: (1),
-        vertical: (1),
+        horizontal: (0),
+        vertical: (0),
     });
 
     let centered_area = view_utility::center(
         inner_area,
-        Constraint::Percentage(40),
-        Constraint::Percentage(40),
+        Constraint::Percentage(100),
+        Constraint::Percentage(30),
     );
+
     let highlight = if model.state == &State::Configuring {
         Style::new().reversed()
     } else {
@@ -52,5 +54,6 @@ pub fn draw(model: &PlayerModel, right_top: Rect, frame: &mut Frame) {
         .collect();
 
     let list = view_utility::create_list(rows, highlight);
-    frame.render_stateful_widget(list.block(settings), inner_area, &mut list_model);
+    frame.render_widget(settings, right_top);
+    frame.render_stateful_widget(list.block(list_container), centered_area, &mut list_model);
 }

@@ -1,4 +1,3 @@
-// Lemonn lemon. Hello, hellllo.
 use crate::Audio;
 use crate::PlayerModel;
 use crate::SinkModel;
@@ -6,13 +5,10 @@ use crate::State;
 use number_drawer::NumberDrawer;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
-use ratatui::layout::Flex;
-use ratatui::layout::Rect;
-use ratatui::layout::{Constraint, Layout};
+use ratatui::layout::{Constraint, Flex, Layout};
 use ratatui::style::palette::tailwind;
 use ratatui::style::{Color, Modifier, Style, Stylize};
-use ratatui::text::Line;
-use ratatui::text::Span;
+use ratatui::text::{Line, Span};
 use ratatui::widgets::Borders;
 use ratatui::widgets::LineGauge;
 use ratatui::widgets::Paragraph;
@@ -22,7 +18,6 @@ use ratatui::widgets::Widget;
 use ratatui::widgets::{Block, BorderType, Padding};
 use ratatui::widgets::{Row, Table};
 use std::time::Duration;
-
 mod config_window;
 mod number_drawer;
 mod player_window;
@@ -36,8 +31,7 @@ const GAUGE_COLOR: Color = tailwind::GREEN.c800;
 
 pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
     let [mut left, mut right] =
-        Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(25)])
-            .areas(frame.area());
+        Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(25)]).areas(frame.area());
 
     if frame.area().width < 120 {
         [left, right] = Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(0)])
@@ -64,7 +58,7 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
         [right_top, right_bottom] =
             Layout::vertical([Constraint::Fill(1), Constraint::Percentage(0)])
                 .flex(Flex::Center)
-                .vertical_margin(2)
+                .vertical_margin(1)
                 .areas(right);
     }
 
