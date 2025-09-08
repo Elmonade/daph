@@ -2,7 +2,6 @@ use crate::Audio;
 use crate::PlayerModel;
 use crate::SinkModel;
 use crate::State;
-use number_drawer::NumberDrawer;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Flex, Layout};
@@ -11,7 +10,6 @@ use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Borders;
 use ratatui::widgets::LineGauge;
-use ratatui::widgets::Paragraph;
 use ratatui::widgets::Scrollbar;
 use ratatui::widgets::ScrollbarOrientation;
 use ratatui::widgets::Widget;
@@ -19,6 +17,7 @@ use ratatui::widgets::{Block, BorderType, Padding};
 use ratatui::widgets::{Row, Table};
 use std::time::Duration;
 mod config_window;
+mod info_window;
 mod number_drawer;
 mod player_window;
 mod search_window;
@@ -34,8 +33,14 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
         Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(25)]).areas(frame.area());
 
     if frame.area().width < 120 {
-        [left, right] = Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(0)])
-            .areas(frame.area());
+        if model.state == &State::Configuring {
+            [right, left] = Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(0)])
+                .horizontal_margin(1)
+                .areas(frame.area());
+        } else {
+            [left, right] = Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(0)])
+                .areas(frame.area());
+        }
     }
 
     let [mut left_top, mut left_bottom] =
@@ -82,13 +87,6 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
         .thumb_symbol("|")
         .track_symbol(None)
         .end_symbol(None);
-    let dolphin =
-        Paragraph::new(NumberDrawer::draw("bird")).block(Block::default().padding(Padding {
-            left: (20),
-            right: (0),
-            top: (20),
-            bottom: (0),
-        }));
 
     let mut index = 8; // Point at something on startup.
     if let Some(current_index) = model.current_track_index {
@@ -97,7 +95,6 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
     let mut table_model = model.table_state.clone();
     let mut scrollbar_state = model.scrollbar_state;
     frame.render_widget(left_top_block, left_top_padded);
-    frame.render_widget(dolphin, right_bottom);
     frame.render_stateful_widget(table, music_list_area, &mut table_model);
     frame.render_stateful_widget(scrollbar, music_list_area, &mut scrollbar_state);
 
@@ -107,6 +104,7 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
     if model.state == &State::Adjusting {
         volume_window::draw(sink.volume, left_top_padded, frame)
     }
+    info_window::draw(model, right_bottom, frame);
     config_window::draw(model, right_top, frame);
     player_window::draw(index, sink, model, left_bottom, frame);
 }
