@@ -1,9 +1,9 @@
-<img width="100" height="100" alt="logo" src="https://github.com/user-attachments/assets/7a99012c-2f55-40b3-9019-a53204ba594a"/> 
-
-A music player in the terminal.
+<p align="center">
+  <img height="200" alt="IMG_1388" src="https://github.com/user-attachments/assets/9d7b47c3-57a7-4b67-8219-56d62e60945c" />
+</p>
 
 ## Structure
-Here TEA is the way to go. Each user input is mapped to a set of pre-defined commands the player can understand. The command is then sent to the `update` method which modifies the `PlayerModel`. Finally, the view reflects the changes.  
+Here, [TEA](https://guide.elm-lang.org/architecture/) is the way. Each user input is mapped to a set of pre-defined commands the player can understand. The command is then sent to the `update` method which modifies the `model`. Finally, the `view` reflects the changes.  
 
 ## Controls
 The keybindings are inspired by vim. However, certain keys are avoided to accidentally skip or seek a track. As for why we have two play button, the `:` button is for loading the track into the sink so it's mostly used when picking a new song manually. While, `Space` is for controlling whats already in the sink. This might be a bit roundabout way of doing it so any suggestions on regarding control scheme is welcome, addition to normal code-related issues. 
@@ -31,5 +31,7 @@ The search and delete functionalities are still under construction.
 
 Supports MP3, FLAC, and WAV audio files.
 Control scheme and supported file formats are subject to change. 
+## Example
+<img width="4813" height="2016" alt="image" src="https://github.com/user-attachments/assets/f033ff42-05eb-4c4b-91d8-e22bc2aec789" />
 
-Written by a mere mortal.
+*- Written by mere mortals*
