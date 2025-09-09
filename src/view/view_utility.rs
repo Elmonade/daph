@@ -1,4 +1,5 @@
 use ratatui::{
+    layout::Rect,
     symbols::{self},
     widgets::List,
 };
@@ -91,7 +92,7 @@ pub(crate) fn create_table(tracks: &[Audio]) -> Table<'_> {
 pub(crate) fn create_list(rows: Vec<Span>, highlight: Style) -> List {
     List::new(rows)
         .highlight_style(highlight)
-        .highlight_symbol("  ")
+        .highlight_symbol("     ")
         .repeat_highlight_symbol(true)
 }
 
