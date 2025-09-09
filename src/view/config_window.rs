@@ -23,8 +23,8 @@ pub fn draw(model: &PlayerModel, right_top: Rect, frame: &mut Frame) {
 
     let centered_area = view_utility::center(
         inner_area,
-        Constraint::Percentage(100),
-        Constraint::Percentage(30),
+        Constraint::Percentage(80),
+        Constraint::Length(4),
     );
 
     let highlight = if model.state == &State::Configuring {
@@ -40,7 +40,6 @@ pub fn draw(model: &PlayerModel, right_top: Rect, frame: &mut Frame) {
         Order::Track.to_string(),
     ];
 
-    // TODO: This should be inside view_utility.
     let rows: Vec<Span> = options
         .iter()
         .map(|item| {

@@ -32,7 +32,7 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
     let [mut left, mut right] =
         Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(25)]).areas(frame.area());
 
-    if frame.area().width < 120 {
+    if frame.area().width < 100 {
         if model.state == &State::Configuring {
             [right, left] = Layout::horizontal([Constraint::Fill(1), Constraint::Percentage(0)])
                 .horizontal_margin(1)
@@ -49,7 +49,7 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
             .areas(left);
 
     let [mut right_top, mut right_bottom] =
-        Layout::vertical([Constraint::Fill(1), Constraint::Percentage(75)])
+        Layout::vertical([Constraint::Fill(1), Constraint::Percentage(65)])
             .margin(2)
             .areas(right);
 
