@@ -16,13 +16,9 @@ pub fn draw(model: &PlayerModel, right_top: Rect, frame: &mut Frame) {
         .title("PLAYBACK ORDER")
         .borders(Borders::TOP | Borders::BOTTOM);
     let list_container = Block::default().borders(Borders::NONE);
-    let inner_area = right_top.inner(Margin {
-        horizontal: (0),
-        vertical: (0),
-    });
 
     let centered_area = view_utility::center(
-        inner_area,
+        right_top.inner(Margin::new(0, 0)),
         Constraint::Percentage(80),
         Constraint::Length(4),
     );

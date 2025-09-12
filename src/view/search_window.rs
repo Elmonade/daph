@@ -1,6 +1,15 @@
-use crate::view::BorderType;
+use crate::State;
+use crate::view::view_utility;
+use ratatui::layout::Constraint;
+use ratatui::layout::Flex;
+use ratatui::layout::Layout;
+use ratatui::layout::Margin;
 use ratatui::prelude::Stylize;
 use ratatui::prelude::Widget;
+use ratatui::style::Modifier;
+use ratatui::style::Style;
+use ratatui::text::Span;
+use ratatui::widgets::Borders;
 use ratatui::{
     Frame,
     layout::Rect,
@@ -12,14 +21,74 @@ use crate::model::PlayerModel;
 
 pub fn draw(model: &PlayerModel, right: Rect, frame: &mut Frame) {
     frame.render_widget(Clear, right);
-    Paragraph::new(model.keyword.as_str())
-        .block(
-            Block::bordered()
-                .fg(Color::Green)
-                .border_type(BorderType::Rounded)
-                .padding(Padding::uniform(1))
-                .title("SEARCH"),
-        )
-        .render(right, frame.buffer_mut());
-}
 
+    let [right_top, right_bottom] = Layout::vertical([Constraint::Length(4), Constraint::Fill(1)])
+        .flex(Flex::Center)
+        .vertical_margin(2)
+        .horizontal_margin(2)
+        .areas(right);
+
+    let mut list_model = model.list_state.clone();
+
+    let search = Block::default()
+        .fg(Color::Green)
+        .padding(Padding::uniform(1))
+        .title("SEARCH")
+        .borders(Borders::TOP);
+    let result = Block::default()
+        .fg(Color::Green)
+        .padding(Padding::uniform(1))
+        .title("MATCH")
+        .borders(Borders::TOP | Borders::BOTTOM);
+
+    let list_container = Block::default().borders(Borders::NONE);
+
+    let centered_area_top = view_utility::center(
+        right_top.inner(Margin::new(1, 1)),
+        Constraint::Percentage(80),
+        Constraint::Length(6),
+    );
+
+    let centered_area_bottom = view_utility::center(
+        right_bottom.inner(Margin::new(0, 0)),
+        Constraint::Percentage(80),
+        Constraint::Length(4),
+    );
+
+    let highlight = if model.state == &State::Configuring {
+        Style::new().reversed()
+    } else {
+        Style::new()
+    };
+
+    let options = [
+        String::from("Option 1"),
+        String::from("Option 1"),
+        String::from("Option 1"),
+        String::from("Option 1"),
+        String::from("Option 1"),
+    ];
+
+    let rows: Vec<Span> = options
+        .iter()
+        .map(|item| {
+            let style = match *item == model.playback_order.to_string() {
+                true => Style::default().add_modifier(Modifier::UNDERLINED),
+                _ => Style::default(),
+            };
+
+            Span::from(item).style(style)
+        })
+        .collect();
+
+    let keyword = Paragraph::new(model.keyword.as_str());
+    let list = view_utility::create_list(rows, highlight);
+    frame.render_widget(search, right_top);
+    frame.render_widget(result, right_bottom);
+    frame.render_widget(keyword, centered_area_top);
+    frame.render_stateful_widget(
+        list.block(list_container),
+        centered_area_bottom,
+        &mut list_model,
+    );
+}
