@@ -5,7 +5,6 @@ use ratatui::layout::Flex;
 use ratatui::layout::Layout;
 use ratatui::layout::Margin;
 use ratatui::prelude::Stylize;
-use ratatui::prelude::Widget;
 use ratatui::style::Modifier;
 use ratatui::style::Style;
 use ratatui::text::Span;
@@ -51,8 +50,8 @@ pub fn draw(model: &PlayerModel, right: Rect, frame: &mut Frame) {
 
     let centered_area_bottom = view_utility::center(
         right_bottom.inner(Margin::new(0, 0)),
-        Constraint::Percentage(80),
-        Constraint::Length(4),
+        Constraint::Percentage(100),
+        Constraint::Percentage(90),
     );
 
     let highlight = if model.state == &State::Configuring {
@@ -82,7 +81,7 @@ pub fn draw(model: &PlayerModel, right: Rect, frame: &mut Frame) {
         .collect();
 
     let keyword = Paragraph::new(model.keyword.as_str());
-    let list = view_utility::create_list(rows, highlight);
+    let list = view_utility::create_list(rows, highlight, " - ");
     frame.render_widget(search, right_top);
     frame.render_widget(result, right_bottom);
     frame.render_widget(keyword, centered_area_top);

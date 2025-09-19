@@ -48,7 +48,7 @@ pub fn draw(model: &PlayerModel, right_top: Rect, frame: &mut Frame) {
         })
         .collect();
 
-    let list = view_utility::create_list(rows, highlight);
+    let list = view_utility::create_list(rows, highlight, "     ");
     frame.render_widget(settings, right_top);
     frame.render_stateful_widget(list.block(list_container), centered_area, &mut list_model);
 }
