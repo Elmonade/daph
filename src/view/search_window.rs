@@ -27,7 +27,7 @@ pub fn draw(model: &PlayerModel, right: Rect, frame: &mut Frame) {
         .horizontal_margin(2)
         .areas(right);
 
-    let mut list_model = model.list_state.clone();
+    let mut list_model = model.search_list_state.clone();
 
     let search = Block::default()
         .fg(Color::Green)
@@ -37,7 +37,6 @@ pub fn draw(model: &PlayerModel, right: Rect, frame: &mut Frame) {
     let result = Block::default()
         .fg(Color::Green)
         .padding(Padding::uniform(1))
-        .title("MATCH")
         .borders(Borders::TOP | Borders::BOTTOM);
 
     let list_container = Block::default().borders(Borders::NONE);
@@ -60,23 +59,15 @@ pub fn draw(model: &PlayerModel, right: Rect, frame: &mut Frame) {
         Style::new()
     };
 
-    let options = [
-        String::from("Option 1"),
-        String::from("Option 1"),
-        String::from("Option 1"),
-        String::from("Option 1"),
-        String::from("Option 1"),
-    ];
-
-    let rows: Vec<Span> = options
+    let rows: Vec<Span> = model.matched_tracks
         .iter()
         .map(|item| {
-            let style = match *item == model.playback_order.to_string() {
+            let style = match item.is_playing {
                 true => Style::default().add_modifier(Modifier::UNDERLINED),
                 _ => Style::default(),
             };
 
-            Span::from(item).style(style)
+            Span::from(&item.name).style(style)
         })
         .collect();
 

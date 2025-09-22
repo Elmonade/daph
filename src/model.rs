@@ -18,7 +18,8 @@ pub(crate) struct PlayerModel<'a> {
     pub current_track_index: Option<usize>,
 
     pub table_state: TableState,
-    pub list_state: ListState,
+    pub order_list_state: ListState,
+    pub search_list_state: ListState,
     pub scrollbar_state: ScrollbarState,
 
     pub tx: Sender<Command>,
@@ -59,7 +60,8 @@ impl PlayerModel<'_> {
             keyword: String::new(),
             current_track_index: None,
             table_state: TableState::default().with_selected(Some(0)),
-            list_state: ListState::default().with_selected(Some(0)),
+            order_list_state: ListState::default().with_selected(Some(0)),
+            search_list_state: ListState::default().with_selected(Some(0)),
             tx,
             sink_rx,
             matched_tracks: Vec::new(),

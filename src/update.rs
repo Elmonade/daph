@@ -42,15 +42,15 @@ pub(crate) fn in_config<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>) 
             }
         },
         Message::Down => {
-            if let Some(selected_index) = model.list_state.selected()
+            if let Some(selected_index) = model.order_list_state.selected()
                 && selected_index < 3
             {
-                model.list_state.select_next();
+                model.order_list_state.select_next();
             }
         }
-        Message::Up => model.list_state.select_previous(),
+        Message::Up => model.order_list_state.select_previous(),
         Message::Submit => {
-            if let Some(index) = model.list_state.selected() {
+            if let Some(index) = model.order_list_state.selected() {
                 match index {
                     0 => {
                         if let Some(index) =
@@ -111,7 +111,16 @@ pub(crate) fn in_search<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>) 
             model.keyword.pop();
             model.matched_tracks = search(&model.tracks, &model.keyword);
         }
+        Message::Down => {
+            if let Some(selected_index) = model.search_list_state.selected()
+                && selected_index < model.matched_tracks.len()
+            {
+                model.search_list_state.select_next();
+            }
+        }
+        Message::Up => model.search_list_state.select_previous(),
         Message::Escape => model.state = &State::Playing,
+        //TODO: Add to que. If none, start playing immediately.
         Message::Submit => model.state = &State::Playing,
         _ => (),
     };

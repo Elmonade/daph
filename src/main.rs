@@ -87,6 +87,7 @@ fn run(mut terminal: DefaultTerminal, model: &mut PlayerModel) -> Result<()> {
             terminal.draw(|f| render(f, model, &sink))?;
 
             // Input
+            // TODO: Implement error handling - No ?
             if event::poll(std::time::Duration::from_millis(16))?
                 && let Event::Key(key) = event::read()?
             {

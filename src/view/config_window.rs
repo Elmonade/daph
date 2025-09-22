@@ -9,7 +9,7 @@ use ratatui::{
 use crate::{State, model::PlayerModel, order::Order, view::view_utility};
 
 pub fn draw(model: &PlayerModel, right_top: Rect, frame: &mut Frame) {
-    let mut list_model = model.list_state.clone();
+    let mut list_model = model.order_list_state.clone();
     let settings = Block::default()
         .fg(Color::Green)
         .padding(Padding::uniform(1))
