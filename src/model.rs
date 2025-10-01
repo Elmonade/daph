@@ -26,7 +26,7 @@ pub(crate) struct PlayerModel<'a> {
     pub sink_rx: Receiver<SinkModel>,
 
     pub keyword: String,
-    pub matched_tracks: Vec<Audio>,
+    pub matched_tracks: Vec<usize>,
 
     pub iteration_count: usize,
     pub volume: f32,

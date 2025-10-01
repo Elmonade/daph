@@ -105,11 +105,11 @@ pub(crate) fn in_search<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>) 
     match message {
         Message::AppendKeyword(c) => {
             model.keyword.push(*c);
-            //model.matched_tracks = search(&model.tracks, &model.keyword);
+            model.matched_tracks = search(&model.tracks, &model.keyword);
         }
         Message::RemoveKeyword => {
             model.keyword.pop();
-            //model.matched_tracks = search(&model.tracks, &model.keyword);
+            model.matched_tracks = search(&model.tracks, &model.keyword);
         }
         Message::Down => {
             if let Some(selected_index) = model.search_list_state.selected()
@@ -120,8 +120,22 @@ pub(crate) fn in_search<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>) 
         }
         Message::Up => model.search_list_state.select_previous(),
         Message::Escape => model.state = &State::Playing,
-        //TODO: Add to que. If none, start playing immediately.
-        Message::Submit => model.state = &State::Playing,
+        Message::Submit => {
+            model.state = &State::Playing;
+            if let Some(index) = model.search_list_state.selected() {
+                match model.current_track_index {
+                    Some(current_index) => {
+                        if current_index + 1 < model.tracks.len() {
+                            model.tracks.swap(current_index + 1, index);
+                        }
+                    }
+                    None => {
+                        play_new_track(index, model);
+                    }
+                }
+                println!("\nThe index found: {}", index);
+            };
+        }
         _ => (),
     };
     Message::None

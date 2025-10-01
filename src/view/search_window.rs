@@ -61,13 +61,14 @@ pub fn draw(model: &PlayerModel, right: Rect, frame: &mut Frame) {
 
     let rows: Vec<Span> = model.matched_tracks
         .iter()
-        .map(|item| {
-            let style = match item.is_playing {
+        .map(|index| {
+            let track = model.tracks.get(*index).unwrap();
+            let style = match track.is_playing {
                 true => Style::default().add_modifier(Modifier::UNDERLINED),
                 _ => Style::default(),
             };
 
-            Span::from(&item.name).style(style)
+            Span::from(&track.name).style(style)
         })
         .collect();
 
