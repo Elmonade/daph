@@ -105,11 +105,11 @@ pub(crate) fn in_search<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>) 
     match message {
         Message::AppendKeyword(c) => {
             model.keyword.push(*c);
-            model.matched_tracks = search(&model.tracks, &model.keyword);
+            //model.matched_tracks = search(&model.tracks, &model.keyword);
         }
         Message::RemoveKeyword => {
             model.keyword.pop();
-            model.matched_tracks = search(&model.tracks, &model.keyword);
+            //model.matched_tracks = search(&model.tracks, &model.keyword);
         }
         Message::Down => {
             if let Some(selected_index) = model.search_list_state.selected()

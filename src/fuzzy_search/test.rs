@@ -42,3 +42,49 @@ fn test_search() {
     assert_eq!(search(&tracks, &String::from("Bye")).len(), 0);
     assert_eq!(search(&tracks, &String::from("Rock")).len(), 2);
 }
+
+#[test]
+fn test_index() {
+    let mut tracks = Vec::new();
+    tracks.push(Audio {
+        is_playing: (false),
+        name: (String::from("Hello")),
+        author: (String::from("Adele")),
+        length: 999,
+        path: PathBuf::new(),
+    });
+
+    tracks.push(Audio {
+        is_playing: (false),
+        name: (String::from("Commit Ballad")),
+        author: (String::from("toe")),
+        length: 999,
+        path: PathBuf::new(),
+    });
+
+    tracks.push(Audio {
+        is_playing: (false),
+        name: (String::from("Tomorrow")),
+        author: (String::from("toe")),
+        length: 999,
+        path: PathBuf::new(),
+    });
+
+    tracks.push(Audio {
+        is_playing: (false),
+        name: (String::from("Bee Apple Lemon, Rock")),
+        author: (String::from("toe")),
+        length: 999,
+        path: PathBuf::new(),
+    });
+
+    tracks.push(Audio {
+        is_playing: (false),
+        name: (String::from("Bee Apple Lemon, Rock, Stone")),
+        author: (String::from("toe")),
+        length: 999,
+        path: PathBuf::new(),
+    });
+
+    assert_eq!(search(&tracks, &String::from("Tomorrow"))[0], 2, "Song in position 2 should match.");
+}
