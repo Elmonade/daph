@@ -123,17 +123,17 @@ pub(crate) fn in_search<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>) 
         Message::Submit => {
             model.state = &State::Playing;
             if let Some(index) = model.search_list_state.selected() {
+                let matched_index = model.matched_tracks[index];
                 match model.current_track_index {
                     Some(current_index) => {
                         if current_index + 1 < model.tracks.len() {
-                            model.tracks.swap(current_index + 1, index);
+                            model.tracks.swap(current_index + 1, matched_index);
                         }
                     }
                     None => {
-                        play_new_track(index, model);
+                        play_new_track(matched_index, model);
                     }
                 }
-                println!("\nThe index found: {}", index);
             };
         }
         _ => (),
