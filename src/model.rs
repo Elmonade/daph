@@ -5,6 +5,7 @@ use crate::order::Order;
 use crate::player::SinkModel;
 use crate::update::Command;
 use crate::utility::load_audio;
+use crate::utility::order_by;
 use ratatui::widgets::ListState;
 use ratatui::widgets::ScrollbarState;
 use ratatui::widgets::TableState;
@@ -39,19 +40,21 @@ impl PlayerModel<'_> {
     pub(crate) fn create(config: Config) -> Self {
         let (tx, _rx) = mpsc::channel::<Command>();
         let (_tx, sink_rx) = mpsc::channel::<SinkModel>();
-        let (number_of_tracks, tracks) = load_audio(config.path);
+        let (number_of_tracks, mut tracks) = load_audio(config.path);
 
-        // Will not create a model with no tracks.
+        // Will not create a model without tracks.
         if number_of_tracks == 0 {
             println!("Can't find the audio files. ");
             println!(
                 "You may:
-        1. Update the configuation file with path to your audio file.
-        2. Create Music directory in your home directory."
+        1. Update the configuation file with path to your audio file(s).
+        2. Create 'Music' directory in your home directory."
             );
 
             std::process::exit(1);
         }
+
+        order_by(&Order::Artist, &Order::Shuffle, &mut tracks);
 
         PlayerModel {
             tracks,

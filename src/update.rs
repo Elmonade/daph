@@ -57,40 +57,40 @@ pub(crate) fn in_config<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>) 
                             order_by(&Order::Shuffle, &model.playback_order, &mut model.tracks)
                         {
                             model.current_track_index = Some(index);
-                            model.playback_order = Order::Shuffle;
                         }
+                        model.playback_order = Order::Shuffle;
                     }
                     1 => {
                         if let Some(index) =
                             order_by(&Order::Album, &model.playback_order, &mut model.tracks)
                         {
                             model.current_track_index = Some(index);
-                            model.playback_order = Order::Album;
                         }
+                        model.playback_order = Order::Album;
                     }
                     2 => {
                         if let Some(index) =
                             order_by(&Order::Artist, &model.playback_order, &mut model.tracks)
                         {
                             model.current_track_index = Some(index);
-                            model.playback_order = Order::Artist;
                         }
+                        model.playback_order = Order::Artist;
                     }
                     3 => {
                         if let Some(index) =
                             order_by(&Order::Track, &model.playback_order, &mut model.tracks)
                         {
                             model.current_track_index = Some(index);
-                            model.playback_order = Order::Track;
                         }
+                        model.playback_order = Order::Track;
                     }
                     _ => {
                         if let Some(index) =
                             order_by(&Order::Shuffle, &model.playback_order, &mut model.tracks)
                         {
                             model.current_track_index = Some(index);
-                            model.playback_order = Order::Shuffle;
                         }
+                        model.playback_order = Order::Shuffle;
                     }
                 }
             }
@@ -122,19 +122,22 @@ pub(crate) fn in_search<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>) 
         Message::Escape => model.state = &State::Playing,
         Message::Submit => {
             model.state = &State::Playing;
-            if let Some(index) = model.search_list_state.selected() {
-                let matched_index = model.matched_tracks[index];
-                match model.current_track_index {
-                    Some(current_index) => {
-                        if current_index + 1 < model.tracks.len() {
-                            model.tracks.swap(current_index + 1, matched_index);
+            match model.search_list_state.selected() {
+                Some(selected) => {
+                    if let Some(matched_index) = model.matched_tracks.get(selected) {
+                        if let Some(current_index) = model.current_track_index {
+                            if model.tracks[current_index].is_playing {
+                                if current_index + 1 < model.tracks.len() {
+                                    model.tracks.swap(current_index + 1, *matched_index);
+                                }
+                            } else {
+                                play_new_track(*matched_index, model);
+                            }
                         }
                     }
-                    None => {
-                        play_new_track(matched_index, model);
-                    }
                 }
-            };
+                None => (),
+            }
         }
         _ => (),
     };
