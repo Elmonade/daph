@@ -1,6 +1,7 @@
 use crate::Audio;
 
-pub(crate) fn search(tracks: &[Audio], keyword: &str) -> Vec<usize> {
+//TODO: Make it fuzzy.
+pub(crate) fn fuzzy(tracks: &[Audio], keyword: &str) -> Vec<usize> {
     let lowercase_key = keyword.to_lowercase();
     tracks
         .iter()

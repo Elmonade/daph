@@ -4,8 +4,8 @@
 *
 */
 use crate::State;
-use crate::fuzzy_search::search;
 use crate::order::Order;
+use crate::search::fuzzy;
 use crate::utility::order_by;
 use crate::{Message, PlayerModel, play_new_track};
 use std::path::PathBuf;
@@ -105,39 +105,37 @@ pub(crate) fn in_search<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>) 
     match message {
         Message::AppendKeyword(c) => {
             model.keyword.push(*c);
-            model.matched_tracks = search(&model.tracks, &model.keyword);
+            model.matched_tracks = fuzzy(&model.tracks, &model.keyword);
         }
         Message::RemoveKeyword => {
             model.keyword.pop();
-            model.matched_tracks = search(&model.tracks, &model.keyword);
+            model.matched_tracks = fuzzy(&model.tracks, &model.keyword);
         }
         Message::Down => {
-            if let Some(selected_index) = model.search_list_state.selected()
+            if let Some(selected_index) = model.search_table_state.selected()
                 && selected_index < model.matched_tracks.len()
             {
-                model.search_list_state.select_next();
+                model.search_table_state.select_next();
             }
         }
-        Message::Up => model.search_list_state.select_previous(),
+        Message::Up => model.search_table_state.select_previous(),
         Message::Escape => model.state = &State::Playing,
         Message::Submit => {
             model.state = &State::Playing;
-            match model.search_list_state.selected() {
-                Some(selected) => {
-                    if let Some(matched_index) = model.matched_tracks.get(selected) {
-                        if let Some(current_index) = model.current_track_index {
-                            if model.tracks[current_index].is_playing {
-                                if current_index + 1 < model.tracks.len() {
-                                    model.tracks.swap(current_index + 1, *matched_index);
-                                }
-                            } else {
-                                play_new_track(*matched_index, model);
-                            }
-                        }
+            // TODO: Could kill someone with this if-else spear.
+            if let Some(selected) = model.search_table_state.selected()
+                && let Some(matched_index) = model.matched_tracks.get(selected)
+                && let Some(current_index) = model.current_track_index
+            {
+                if model.tracks[current_index].is_playing {
+                    if current_index + 1 < model.tracks.len() {
+                        model.tracks.swap(current_index + 1, *matched_index);
                     }
+                } else {
+                    play_new_track(*matched_index, model);
                 }
-                None => (),
             }
+            // TODO: Reset the playback order. It is no longer sorted.
         }
         _ => (),
     };

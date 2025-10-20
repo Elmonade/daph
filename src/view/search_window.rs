@@ -1,13 +1,10 @@
-use crate::State;
+use crate::Audio;
 use crate::view::view_utility;
 use ratatui::layout::Constraint;
 use ratatui::layout::Flex;
 use ratatui::layout::Layout;
 use ratatui::layout::Margin;
 use ratatui::prelude::Stylize;
-use ratatui::style::Modifier;
-use ratatui::style::Style;
-use ratatui::text::Span;
 use ratatui::widgets::Borders;
 use ratatui::{
     Frame,
@@ -27,8 +24,7 @@ pub fn draw(model: &PlayerModel, right: Rect, frame: &mut Frame) {
         .horizontal_margin(2)
         .areas(right);
 
-    let mut list_model = model.search_list_state.clone();
-
+    let mut table_model = model.search_table_state.clone();
     let search = Block::default()
         .fg(Color::Green)
         .padding(Padding::uniform(1))
@@ -53,33 +49,20 @@ pub fn draw(model: &PlayerModel, right: Rect, frame: &mut Frame) {
         Constraint::Percentage(90),
     );
 
-    let highlight = if model.state == &State::Configuring {
-        Style::new().reversed()
-    } else {
-        Style::new()
-    };
-
-    let rows: Vec<Span> = model.matched_tracks
+    let tracks = model
+        .matched_tracks
         .iter()
-        .map(|index| {
-            let track = model.tracks.get(*index).unwrap();
-            let style = match track.is_playing {
-                true => Style::default().add_modifier(Modifier::UNDERLINED),
-                _ => Style::default(),
-            };
-
-            Span::from(&track.name).style(style)
-        })
-        .collect();
+        .map(|index| model.tracks[*index].clone())
+        .collect::<Vec<Audio>>();
 
     let keyword = Paragraph::new(model.keyword.as_str());
-    let list = view_utility::create_list(rows, highlight, " - ");
+    let list = view_utility::create_table(&tracks);
     frame.render_widget(search, right_top);
     frame.render_widget(result, right_bottom);
     frame.render_widget(keyword, centered_area_top);
     frame.render_stateful_widget(
         list.block(list_container),
         centered_area_bottom,
-        &mut list_model,
+        &mut table_model,
     );
 }
