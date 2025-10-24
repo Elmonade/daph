@@ -49,14 +49,16 @@ pub fn draw(model: &PlayerModel, right: Rect, frame: &mut Frame) {
         Constraint::Percentage(90),
     );
 
-    let tracks = model
-        .matched_tracks
-        .iter()
-        .map(|index| model.tracks[*index].clone())
-        .collect::<Vec<Audio>>();
+    // TODO: Replace for with map
+    let mut tracks = Vec::new();
+    for index in &model.matched_tracks {
+        tracks.push(&model.tracks[*index]);
+    }
 
     let keyword = Paragraph::new(model.keyword.as_str());
-    let list = view_utility::create_table(&tracks);
+
+    let list = view_utility::create_table_from_ref(&tracks);
+
     frame.render_widget(search, right_top);
     frame.render_widget(result, right_bottom);
     frame.render_widget(keyword, centered_area_top);
