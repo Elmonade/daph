@@ -4,8 +4,8 @@
 *
 */
 use crate::State;
-use crate::fuzzy_search::search;
 use crate::order::Order;
+use crate::search::fuzzy;
 use crate::utility::order_by;
 use crate::{Message, PlayerModel, play_new_track};
 use std::path::PathBuf;
@@ -42,55 +42,55 @@ pub(crate) fn in_config<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>) 
             }
         },
         Message::Down => {
-            if let Some(selected_index) = model.list_state.selected()
+            if let Some(selected_index) = model.order_list_state.selected()
                 && selected_index < 3
             {
-                model.list_state.select_next();
+                model.order_list_state.select_next();
             }
         }
-        Message::Up => model.list_state.select_previous(),
+        Message::Up => model.order_list_state.select_previous(),
         Message::Submit => {
-            if let Some(index) = model.list_state.selected() {
+            if let Some(index) = model.order_list_state.selected() {
                 match index {
                     0 => {
                         if let Some(index) =
                             order_by(&Order::Shuffle, &model.playback_order, &mut model.tracks)
                         {
                             model.current_track_index = Some(index);
-                            model.playback_order = Order::Shuffle;
                         }
+                        model.playback_order = Order::Shuffle;
                     }
                     1 => {
                         if let Some(index) =
                             order_by(&Order::Album, &model.playback_order, &mut model.tracks)
                         {
                             model.current_track_index = Some(index);
-                            model.playback_order = Order::Album;
                         }
+                        model.playback_order = Order::Album;
                     }
                     2 => {
                         if let Some(index) =
                             order_by(&Order::Artist, &model.playback_order, &mut model.tracks)
                         {
                             model.current_track_index = Some(index);
-                            model.playback_order = Order::Artist;
                         }
+                        model.playback_order = Order::Artist;
                     }
                     3 => {
                         if let Some(index) =
                             order_by(&Order::Track, &model.playback_order, &mut model.tracks)
                         {
                             model.current_track_index = Some(index);
-                            model.playback_order = Order::Track;
                         }
+                        model.playback_order = Order::Track;
                     }
                     _ => {
                         if let Some(index) =
                             order_by(&Order::Shuffle, &model.playback_order, &mut model.tracks)
                         {
                             model.current_track_index = Some(index);
-                            model.playback_order = Order::Shuffle;
                         }
+                        model.playback_order = Order::Shuffle;
                     }
                 }
             }
@@ -105,14 +105,38 @@ pub(crate) fn in_search<'a>(message: &Message<'a>, model: &mut PlayerModel<'a>) 
     match message {
         Message::AppendKeyword(c) => {
             model.keyword.push(*c);
-            model.matched_tracks = search(&model.tracks, &model.keyword);
+            model.matched_tracks = fuzzy(&model.tracks, &model.keyword);
         }
         Message::RemoveKeyword => {
             model.keyword.pop();
-            model.matched_tracks = search(&model.tracks, &model.keyword);
+            model.matched_tracks = fuzzy(&model.tracks, &model.keyword);
         }
+        Message::Down => {
+            if let Some(selected_index) = model.search_table_state.selected()
+                && selected_index < model.matched_tracks.len()
+            {
+                model.search_table_state.select_next();
+            }
+        }
+        Message::Up => model.search_table_state.select_previous(),
         Message::Escape => model.state = &State::Playing,
-        Message::Submit => model.state = &State::Playing,
+        Message::Submit => {
+            model.state = &State::Playing;
+            // TODO: Could kill someone with this if-else spear.
+            if let Some(selected) = model.search_table_state.selected()
+                && let Some(matched_index) = model.matched_tracks.get(selected)
+                && let Some(current_index) = model.current_track_index
+            {
+                if model.tracks[current_index].is_playing {
+                    if current_index + 1 < model.tracks.len() {
+                        model.tracks.swap(current_index + 1, *matched_index);
+                    }
+                } else {
+                    play_new_track(*matched_index, model);
+                }
+            }
+            // TODO: Reset the playback order. It is no longer sorted.
+        }
         _ => (),
     };
     Message::None

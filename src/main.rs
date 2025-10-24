@@ -12,11 +12,11 @@ use std::path::PathBuf;
 use std::result::Result::Ok;
 use std::time::Duration;
 mod config;
-mod fuzzy_search;
 mod message;
 mod model;
 mod order;
 mod player;
+mod search;
 mod update;
 mod utility;
 mod view;
@@ -87,6 +87,7 @@ fn run(mut terminal: DefaultTerminal, model: &mut PlayerModel) -> Result<()> {
             terminal.draw(|f| render(f, model, &sink))?;
 
             // Input
+            // TODO: Implement error handling - No (?)
             if event::poll(std::time::Duration::from_millis(16))?
                 && let Event::Key(key) = event::read()?
             {

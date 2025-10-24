@@ -44,7 +44,7 @@ pub(crate) fn title_block<'a>(color: &'a Color, author: &'a str, name: &'a str) 
         .fg(*color)
 }
 
-pub(crate) fn create_table(tracks: &[Audio]) -> Table<'_> {
+pub(crate) fn create_table<'a>(tracks: &[Audio]) -> Table<'a> {
     let header = Row::new(["Song", "Artist", "Duration"])
         .style(Style::new().bold())
         .bottom_margin(1);
@@ -89,10 +89,60 @@ pub(crate) fn create_table(tracks: &[Audio]) -> Table<'_> {
         .highlight_symbol("  -  ")
 }
 
-pub(crate) fn create_list(rows: Vec<Span>, highlight: Style) -> List {
+// TODO: Unify the two function.
+pub(crate) fn create_table_from_ref<'a>(tracks: &[&'a Audio]) -> Table<'a> {
+    let header = Row::new(["Song", "Artist", "Duration"])
+        .style(Style::new().bold())
+        .bottom_margin(1);
+
+    //TODO: Refactor.
+    let rows: Vec<Row> = tracks
+        .iter()
+        .map(|item| {
+            let style = match item.is_playing {
+                true => Style::default()
+                    .fg(CUSTOM_LABEL_COLOR)
+                    .add_modifier(Modifier::BOLD),
+                _ => Style::default(),
+            };
+
+            Row::new([
+                item.name.clone(),
+                item.author.clone(),
+                item.length.to_string(),
+            ])
+            .style(style)
+        })
+        .collect();
+
+    //let footer = Row::new(["Lemon", "Lemon Tree", "000"]);
+
+    let widths = [
+        Constraint::Percentage(50),
+        Constraint::Percentage(30),
+        Constraint::Percentage(20),
+    ];
+
+    Table::new(rows, widths)
+        //.footer(footer.italic())
+        //.style(Color::White)
+        //.row_highlight_style(Style::new().on_black().bold())
+        //.column_highlight_style(Color::Gray)
+        //.cell_highlight_style(Style::new().reversed().yellow())
+        .header(header)
+        .column_spacing(1)
+        .row_highlight_style(Style::new().fg(Color::Green))
+        .highlight_symbol("  -  ")
+}
+
+pub(crate) fn create_list<'a>(
+    rows: Vec<Span<'a>>,
+    highlight: Style,
+    select_symbol: &'a str,
+) -> List<'a> {
     List::new(rows)
         .highlight_style(highlight)
-        .highlight_symbol("     ")
+        .highlight_symbol(select_symbol)
         .repeat_highlight_symbol(true)
 }
 

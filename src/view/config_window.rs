@@ -9,20 +9,16 @@ use ratatui::{
 use crate::{State, model::PlayerModel, order::Order, view::view_utility};
 
 pub fn draw(model: &PlayerModel, right_top: Rect, frame: &mut Frame) {
-    let mut list_model = model.list_state.clone();
+    let mut list_model = model.order_list_state.clone();
     let settings = Block::default()
         .fg(Color::Green)
         .padding(Padding::uniform(1))
         .title("PLAYBACK ORDER")
         .borders(Borders::TOP | Borders::BOTTOM);
     let list_container = Block::default().borders(Borders::NONE);
-    let inner_area = right_top.inner(Margin {
-        horizontal: (0),
-        vertical: (0),
-    });
 
     let centered_area = view_utility::center(
-        inner_area,
+        right_top.inner(Margin::new(0, 0)),
         Constraint::Percentage(80),
         Constraint::Length(4),
     );
@@ -52,7 +48,7 @@ pub fn draw(model: &PlayerModel, right_top: Rect, frame: &mut Frame) {
         })
         .collect();
 
-    let list = view_utility::create_list(rows, highlight);
+    let list = view_utility::create_list(rows, highlight, "     ");
     frame.render_widget(settings, right_top);
     frame.render_stateful_widget(list.block(list_container), centered_area, &mut list_model);
 }

@@ -27,6 +27,7 @@ mod volume_window;
 const CUSTOM_LABEL_COLOR: Color = tailwind::SKY.c200;
 const BY_COLOR: Color = tailwind::RED.c300;
 const GAUGE_COLOR: Color = tailwind::GREEN.c800;
+const SCROLL_SYMBOL: &str = "|";
 
 pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
     let [mut left, mut right] =
@@ -84,7 +85,7 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
     let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
         .thumb_style(Style::default().fg(Color::Green))
         .begin_symbol(Some(" "))
-        .thumb_symbol("|")
+        .thumb_symbol(SCROLL_SYMBOL)
         .track_symbol(None)
         .end_symbol(None);
 
@@ -98,13 +99,14 @@ pub(crate) fn render(frame: &mut Frame, model: &PlayerModel, sink: &SinkModel) {
     frame.render_stateful_widget(table, music_list_area, &mut table_model);
     frame.render_stateful_widget(scrollbar, music_list_area, &mut scrollbar_state);
 
+    player_window::draw(index, sink, model, left_bottom, frame);
+    info_window::draw(model, right_bottom, frame);
+    config_window::draw(model, right_top, frame);
+
     if model.state == &State::Searching {
         search_window::draw(model, right, frame)
     }
     if model.state == &State::Adjusting {
         volume_window::draw(sink.volume, left_top_padded, frame)
     }
-    info_window::draw(model, right_bottom, frame);
-    config_window::draw(model, right_top, frame);
-    player_window::draw(index, sink, model, left_bottom, frame);
 }

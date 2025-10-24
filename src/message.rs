@@ -39,6 +39,8 @@ pub(crate) fn from_search<'a>(key: KeyEvent) -> Message<'a> {
         event::KeyCode::Backspace => return Message::RemoveKeyword,
         event::KeyCode::Esc => return Message::Escape,
         event::KeyCode::Enter => return Message::Submit,
+        event::KeyCode::Down => return Message::Down,
+        event::KeyCode::Up => return Message::Up,
         _ => Message::None,
     };
     Message::None
